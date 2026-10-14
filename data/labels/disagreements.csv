@@ -1,0 +1,17 @@
+frame,t_actual,field,read,pbp,play_id,pbp_clock,desc
+f_0001.png,5100.64,clock,14:57,15:00,3273,15:00,"(15:00) ** Injury Update: CIN-20-D.Turner has returned to the game. PENALTY on NYJ-20-B.Hall, False Start, 5 yards, enfo"
+f_0002.png,5105.60,clock,14:57,15:00,3273,15:00,"(15:00) ** Injury Update: CIN-20-D.Turner has returned to the game. PENALTY on NYJ-20-B.Hall, False Start, 5 yards, enfo"
+f_0067.png,5430.00,distance,4,3,3467,12:22,(12:22) (Shotgun) 16-J.Flacco pass short left to 1-J.Chase to NYJ 18 for 16 yards (44-J.Sherwood).
+f_0068.png,5435.00,distance,4,3,3467,12:22,(12:22) (Shotgun) 16-J.Flacco pass short left to 1-J.Chase to NYJ 18 for 16 yards (44-J.Sherwood).
+f_0069.png,5440.00,distance,4,3,3467,12:22,(12:22) (Shotgun) 16-J.Flacco pass short left to 1-J.Chase to NYJ 18 for 16 yards (44-J.Sherwood).
+f_0070.png,5445.00,distance,4,3,3467,12:22,(12:22) (Shotgun) 16-J.Flacco pass short left to 1-J.Chase to NYJ 18 for 16 yards (44-J.Sherwood).
+f_0372.png,6955.00,bengals_timeouts,3,2,4267,00:37,(:37) (Shotgun) 16-J.Flacco pass incomplete short left to 1-J.Chase.
+f_0401.png,7100.00,down,2,1,4320,00:27,(:27) 7-J.Fields kneels to CIN 46 for -1 yards.
+f_0402.png,7105.00,down,2,1,4320,00:27,(:27) 7-J.Fields kneels to CIN 46 for -1 yards.
+f_0402.png,7105.00,distance,11,10,4320,00:27,(:27) 7-J.Fields kneels to CIN 46 for -1 yards.
+f_0403.png,7110.00,down,2,1,4320,00:27,(:27) 7-J.Fields kneels to CIN 46 for -1 yards.
+f_0403.png,7110.00,distance,11,10,4320,00:27,(:27) 7-J.Fields kneels to CIN 46 for -1 yards.
+f_0404.png,7115.00,down,2,,4342,00:00,END GAME
+f_0404.png,7115.00,distance,11,,4342,00:00,END GAME
+f_0405.png,7120.00,down,2,,4342,00:00,END GAME
+f_0405.png,7120.00,distance,11,,4342,00:00,END GAME

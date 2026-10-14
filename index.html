@@ -1,0 +1,628 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Clef NFL Probe</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+:root{--bg:#0e1116;--panel:#171c24;--panel2:#1d232d;--line:#2a323e;--fg:#e8ebf0;--mut:#8d97a6;--dim:#5d6878;
+ --ok:#3ecf8e;--bad:#ff6b6b;--warn:#f5a524;--acc:#5aa9ff;
+ --gA:#5aa9ff;--gB:#3ecf8e;--gC:#b58cff;--gD:#f5a524;--jets:#12714d;--cin:#e4531b}
+*{box-sizing:border-box} html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:1480px;margin:0 auto;padding:0 20px}
+header{padding:26px 0 6px}
+.tag{display:inline-block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--bad);border:1px solid #5a2b2b;border-radius:99px;padding:2px 10px;margin-bottom:10px}
+h1{font-size:26px;line-height:1.2;margin:0 0 8px;font-weight:700;letter-spacing:-.01em}
+h1 em{font-style:normal;color:var(--ok)}
+.lede{max-width:900px;color:#c5ccd6;margin:0;font-size:15px}
+.lede b{color:var(--fg)}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:18px 0 6px}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;border-top:3px solid var(--ok)}
+.tile:nth-child(2){border-top-color:var(--acc)} .tile:nth-child(3){border-top-color:var(--gC)} .tile:nth-child(4){border-top-color:var(--warn)}
+.tile b{display:block;font-size:26px;line-height:1.15;font-variant-numeric:tabular-nums}
+.tile span{color:var(--mut);font-size:12.5px}
+h2{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--acc);margin:34px 0 4px;font-weight:700}
+h2+p.sub{margin:0 0 12px;color:var(--mut);max-width:900px}
+h3{font-size:14px;margin:0 0 6px}
+section{scroll-margin-top:10px}
+
+/* watch: the video with Clef's answers drawn on it (docs/overlay.md) */
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.chip{font-size:12px;background:var(--panel);border:1px solid var(--line);border-radius:99px;padding:2px 10px;cursor:pointer;color:#c5ccd6}
+.chip b{color:var(--fg)}
+button,select{background:var(--panel2);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:5px 12px;font:inherit;font-size:13px;cursor:pointer}
+button:hover,.chip:hover{border-color:var(--acc)}
+#stage{display:grid;grid-template-columns:minmax(0,1fr);grid-template-areas:"v" "c" "i";gap:8px;background:var(--bg);max-width:min(100%,calc((100vh - 170px) * 16 / 9))}
+#stage:fullscreen{max-width:none;height:100vh;padding:10px;grid-template-rows:minmax(0,1fr) auto auto}
+#stage:-webkit-full-screen{max-width:none;height:100vh;padding:10px;grid-template-rows:minmax(0,1fr) auto auto}
+#varea{grid-area:v;min-width:0;min-height:0}
+#stage:fullscreen #varea{container-type:size}
+#stage:-webkit-full-screen #varea{container-type:size}
+#vbox{position:relative;width:100%;aspect-ratio:16/9;background:#000;border-radius:8px;overflow:hidden;container-type:inline-size}
+#stage:fullscreen #vbox{width:min(100cqw, 100cqh * 16 / 9);margin:0 auto}
+#stage:-webkit-full-screen #vbox{width:min(100cqw, 100cqh * 16 / 9);margin:0 auto}
+#vid{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:pointer}
+#vmsg{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);color:var(--mut);font-size:14px;text-align:center;pointer-events:none;max-width:80%}
+
+/* the overlay: positions are in the clip's own pixels (1920x1080), written as percentages */
+#ov{position:absolute;inset:0;pointer-events:none;color:#fff;font:600 clamp(10px,1.25cqw,24px)/1.25 system-ui,-apple-system,"Segoe UI",sans-serif;transition:opacity .3s}
+#stage.ovoff #ov{opacity:0}
+#ov>*{position:absolute;transition:opacity .6s}
+#ov.nof>:not(#o-wait){opacity:0!important}
+#ov:not(.nof) #o-wait{display:none}
+#o-wait{left:50%;top:50%;transform:translate(-50%,-50%);background:rgba(8,11,16,.8);border-radius:.4em;padding:.3em .8em;color:#c5ccd6}
+.ob{border:.14em solid rgba(255,255,255,.8);border-radius:.35em;box-shadow:0 0 0 .1em rgba(0,0,0,.35);opacity:0}
+.ob.on{opacity:1}
+#stage.truth .ob.on.bad{border-color:var(--bad)}
+#stage.truth .ob.missed{opacity:1;border-style:dashed;border-color:var(--bad)}
+#o-banlab{position:absolute;bottom:100%;left:-.14em;margin-bottom:.3em;background:rgba(8,11,16,.84);padding:.1em .5em;border-radius:.3em;white-space:nowrap}
+.ofig{opacity:0;border:.14em solid var(--bad);border-radius:.3em}
+.ofig i{display:none;position:absolute;top:-.6em;right:-.6em;width:1.15em;height:1.15em;border-radius:50%;background:var(--ok);color:#06121f;font-style:normal;font-size:.8em;line-height:1.15em;text-align:center}
+#stage.truth .ofig.bad{opacity:1}
+#stage.truth .ofig.grey{opacity:1;border-color:var(--warn);border-style:dashed}
+#stage.truth .ofig.badge.ok{opacity:1;border-color:transparent}
+#stage.truth .ofig.badge.ok i{display:block}
+#o-read{transform:translateX(-50%);white-space:nowrap;background:rgba(8,11,16,.82);border-radius:.4em;padding:.12em .7em;font-size:.92em;display:flex;gap:.75em;align-items:baseline;opacity:0}
+#o-read.on{opacity:1}
+#o-read .rl{color:var(--acc);font-weight:700}
+#o-tags{left:1.6%;top:17%;display:flex;flex-direction:column;align-items:flex-start}
+.otag{background:rgba(8,11,16,.82);border-left:.22em solid var(--acc);border-radius:.3em;padding:.2em .65em;font-size:1.3em;margin-bottom:.3em;max-height:4em;overflow:hidden;transition:opacity .6s,border-color .3s,max-height 0s,padding 0s,margin 0s}
+/* a hidden tag fades, then collapses so the tags below move up */
+.otag.gone{opacity:0;max-height:0;padding-top:0;padding-bottom:0;margin:0;transition:opacity .6s,max-height 0s .6s,padding 0s .6s,margin 0s .6s}
+#tg-view{font-size:1.65em;font-weight:700}
+#stage.truth .otag.keep.gone{opacity:1;max-height:4em;padding-top:.2em;padding-bottom:.2em;margin-bottom:.3em}
+.oev{left:50%;top:4%;transform:translateX(-50%);background:rgba(8,11,16,.88);border:.12em solid var(--acc);border-radius:.45em;padding:.3em 1em;text-align:center;white-space:nowrap;opacity:0}
+.oev b{display:block;font-size:1.35em;letter-spacing:.03em}
+.oev small{display:block;color:#c5ccd6;font-weight:500;font-size:.85em}
+.oev.on{opacity:1}
+#o-miss{top:16%;border-style:dashed;border-color:var(--bad)}
+#o-miss.on{opacity:0}
+#stage.truth #o-miss.on{opacity:1}
+#stage.truth #o-ev.ok{border-color:var(--ok)}
+
+/* marks shared by the overlay, the side card and the strip; ticks and reds only with "check vs truth" on */
+.pc{color:#aab3c0;font-weight:500;margin-left:.45em;font-size:.85em}
+.low .pc,.pt.low{color:var(--warn)}
+.sb{display:none}
+#stage.truth .sb{display:inline;font-weight:500;color:#ffc9c9}
+#stage.truth .ok>.tk::after{content:"\2713";margin-left:.25em;color:var(--ok)}
+#stage.truth .bad>.tk::after{content:"\2717";margin-left:.25em;color:var(--bad)}
+#stage.truth .grey>.tk::after{content:"*";margin-left:.15em;color:var(--warn)}
+#stage.truth .pt.ok{color:#9af0c6}
+#stage.truth .pt.bad{color:#ff8f8f}
+#stage.truth .pt.grey{color:var(--warn)}
+#stage.truth .otag.ok{border-left-color:var(--ok)}
+#stage.truth .otag.bad{border-left-color:var(--bad)}
+#stage.truth .otag.grey{border-left-color:var(--warn)}
+
+/* controls */
+#ctl{grid-area:c;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#play{background:var(--acc);color:#06121f;border-color:var(--acc);font-weight:700;min-width:78px}
+#ctl button.on{border-color:var(--acc);color:var(--acc)}
+#clock{color:var(--mut);font-variant-numeric:tabular-nums;font-size:12.5px;min-width:92px}
+#seek{flex:1 1 200px;position:relative;height:24px;background:var(--panel);border:1px solid var(--line);border-radius:6px;cursor:pointer;touch-action:none}
+#seek .fill{position:absolute;left:0;top:0;bottom:0;background:rgba(90,169,255,.16);border-radius:6px 0 0 6px;pointer-events:none}
+#seek .head{position:absolute;top:-3px;bottom:-3px;width:2px;margin-left:-1px;background:#fff;pointer-events:none;z-index:2}
+.sm{position:absolute;top:3px;bottom:3px;width:5px;margin-left:-2px;border-radius:2px;background:var(--acc);pointer-events:none}
+.sm.minor{background:var(--dim);top:8px;bottom:8px;width:3px}
+.sm.miss{display:none;background:none;border:1.5px dashed var(--bad)}
+#stage.truth .sm.miss{display:block}
+
+/* the box on the picture, top right under the network logo: answers Clef cannot point at */
+#o-box{right:1.6%;top:11%;background:rgba(8,11,16,.8);border-radius:.45em;padding:.4em .7em;min-width:15em;font-size:1.2em}
+#o-box .bh{font-size:.62em;letter-spacing:.12em;text-transform:uppercase;color:var(--acc);margin-bottom:.2em}
+.row{display:grid;grid-template-columns:auto 1fr;gap:0 .7em;align-items:baseline;padding:.15em .4em;border-radius:.3em;border-left:.18em solid var(--gC);margin-top:.2em;transition:opacity .6s,background .3s}
+.row .k{color:#aab3c0;font-weight:500;font-size:.8em}
+.row .sb{grid-column:2}
+#stage.truth .row .sb{display:block;font-size:.8em}
+.row.dim{opacity:.5}
+.row.gone{display:none}
+#stage.truth .row.keep.gone{display:grid}
+#stage.truth .row.bad{opacity:1;background:rgba(255,107,107,.22)}
+#stage.truth .row.bad .v{color:#ff8f8f}
+#stage.truth .row.ok .v{color:#9af0c6}
+#stage.truth .row.grey{opacity:1}
+#stage.truth .row.grey .v{color:var(--warn)}
+#notes{display:flex;gap:6px 18px;flex-wrap:wrap;font-size:12.5px;color:var(--mut)}
+#notes .pt{color:#c5ccd6;font-weight:600}
+
+/* the strip under the video: editorial answers, the replay note, the message line */
+#info{grid-area:i;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 12px;display:grid;gap:4px}
+#stage.noinfo #info{display:none}
+#msg{font-size:15px;font-weight:600;min-height:22px}
+#msg b{color:var(--acc)}
+#ed{display:flex;gap:6px 18px;flex-wrap:wrap;font-size:13px;color:#c5ccd6}
+#ed .pt{color:var(--fg);font-weight:600}
+#ed .tally{display:none;margin-left:auto;color:var(--mut)}
+#stage.truth #ed .tally{display:inline}
+#rnote{font-size:12px;color:var(--mut)}
+#grey{display:none;font-size:12.5px;color:var(--warn)}
+#stage.truth #grey.on{display:block}
+#keys{font-size:11.5px;color:var(--dim)}
+#keys kbd{font:inherit;border:1px solid var(--line);border-radius:3px;padding:0 4px;color:var(--mut)}
+
+/* tables and charts */
+.two{display:grid;grid-template-columns:1.15fr 1fr;gap:14px;align-items:start} @media(max-width:1050px){.two{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+table{border-collapse:collapse;width:100%;font-size:13px} th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);text-align:left;font-weight:600;padding:4px 8px;border-bottom:1px solid var(--line)}
+td{padding:4px 8px;border-bottom:1px solid #222a35;font-variant-numeric:tabular-nums} tr:last-child td{border-bottom:0}
+tr.ev{cursor:pointer} tr.ev:hover td{background:var(--panel2)}
+.pill{display:inline-block;font-size:11px;font-weight:700;border-radius:99px;padding:1px 9px} .pill.hit{background:rgba(62,207,142,.16);color:var(--ok)} .pill.miss{background:rgba(255,107,107,.16);color:var(--bad)}
+.big3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px} .big3 div{background:var(--panel2);border-radius:8px;padding:8px 10px} .big3 b{display:block;font-size:22px;line-height:1.2}
+.big3 span{font-size:12px;color:var(--mut)}
+.bar{display:grid;grid-template-columns:150px 1fr 96px;gap:8px;align-items:center;font-size:12.5px;line-height:20px}
+.bar .n{color:#c5ccd6;white-space:nowrap} .bar .n.soft{color:var(--mut)}
+.bar .trk{position:relative;height:9px;background:#232b37;border-radius:5px}
+.bar .fill{position:absolute;left:0;top:0;bottom:0;border-radius:5px;background:var(--c)} .bar.softrow .fill{opacity:.45}
+.bar .base{position:absolute;top:-3px;bottom:-3px;width:2px;background:#fff;opacity:.85}
+.bar .num{font-variant-numeric:tabular-nums;color:var(--fg)} .bar .num small{color:var(--mut)}
+.bar.under .num{color:var(--bad)}
+.note{color:var(--mut);font-size:12.5px;margin:8px 0 0}
+ul{margin:6px 0 0;padding-left:18px} li{margin:3px 0} li b{color:var(--fg)}
+.cols3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px} @media(max-width:1050px){.cols3{grid-template-columns:1fr}}
+.card.warn{border-left:3px solid var(--warn)} .card.star{border-left:3px solid var(--gC)} .card.avoid{border-left:3px solid var(--dim)} .card.next{border-left:3px solid var(--ok)}
+.steps{counter-reset:s;display:grid;grid-template-columns:repeat(5,1fr);gap:10px} @media(max-width:1050px){.steps{grid-template-columns:1fr}}
+.steps div{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13px;color:#c5ccd6}
+.steps div:before{counter-increment:s;content:counter(s);display:inline-block;width:20px;height:20px;border-radius:50%;background:var(--acc);color:#06121f;font-weight:700;font-size:12px;text-align:center;line-height:20px;margin-right:6px}
+.steps b{color:var(--fg)}
+footer{color:var(--dim);font-size:12px;padding:26px 0 30px;border-top:1px solid var(--line);margin-top:34px}
+#err{color:var(--bad)}
+</style></head><body><div class="wrap">
+
+<header>
+ <span class="tag">Internal &middot; not for distribution</span>
+ <h1>Can an AI model watch an NFL broadcast and tell us what is happening, <em>frame by frame</em>?</h1>
+ <p class="lede">We gave <b>Cloudflare's Clef</b> one still frame every 5 seconds from the 4th quarter of <b>Jets at Bengals (Week 8, 2025)</b>
+ and asked it the same 24 multiple-choice questions about each one: the score, the clock, who has the ball, what kind of shot it is.
+ We then turned its answers into game events (touchdowns, conversions, reviews, the lead change) and checked everything against
+ the official play-by-play. The aim: see whether this is accurate and cheap enough to drive auto-clipping, live app updates and archive tagging.</p>
+ <div class="tiles">
+  <div class="tile"><b id="t1">–</b><span>of scorebug answers correct (score, clock, down, possession&hellip;)</span></div>
+  <div class="tile"><b id="t2">–</b><span>game events detected, with <span id="t2b">–</span> false alarms</span></div>
+  <div class="tile"><b id="t3">–</b><span>per hour of broadcast, at one frame every 5 s</span></div>
+  <div class="tile"><b id="t4">–</b><span>per frame to get all 24 answers</span></div>
+ </div>
+ <div id="err"></div>
+</header>
+
+<section id="watch">
+ <h2>Watch it work</h2>
+ <p class="sub">The 4th quarter as broadcast, with Clef's answers drawn on as they would arrive live: each appears when Clef finished answering
+  (about 2 s after the frame it was asked about) and holds until the next. Press <b>T</b> to check the answers against our labels, <b>F</b> for fullscreen.</p>
+ <div id="stage">
+  <div id="varea"><div id="vbox">
+   <video id="vid" preload="metadata" playsinline></video>
+   <div id="ov" class="nof" aria-hidden="true"></div>
+   <div id="vmsg">Loading&hellip;</div>
+  </div></div>
+  <div id="ctl">
+   <button id="play">&#9654; Play</button><span id="clock">0:00 / 0:00</span>
+   <div id="seek"><div class="fill"></div><div class="head"></div></div>
+   <select id="rate" title="Playback speed"><option value="1">1x</option><option value="2">2x</option><option value="4">4x</option></select>
+   <button id="bmute">Sound on</button><button id="bov" class="on" title="O">Overlay</button>
+   <button id="btr" title="T">Check vs truth</button><button id="bfs" title="F">&#x26F6; Fullscreen</button>
+  </div>
+  <div id="info">
+   <div id="msg"></div>
+   <div id="ed"></div>
+   <div id="notes"></div>
+   <div id="grey"></div>
+   <div id="rnote"></div>
+   <div id="keys"><kbd>Space</kbd> play &middot; <kbd>F</kbd> fullscreen &middot; <kbd>T</kbd> check vs truth &middot; <kbd>O</kbd> overlay &middot; <kbd>I</kbd> this strip &middot;
+    <kbd>&larr;</kbd><kbd>&rarr;</kbd> &plusmn;5 s in fullscreen &middot; Footage &copy; NFL (Jets at Bengals, 26 Oct 2025), used with permission for internal demonstration only.</div>
+  </div>
+ </div>
+ <div class="chips" id="chips"></div>
+</section>
+
+<section id="events">
+ <h2>Events: what it caught</h2>
+ <p class="sub">Events are detected from changes in Clef's answers alone, such as the Jets' score going from 32 to 38. Click a row to see the moment.</p>
+ <div class="two">
+  <div class="card"><table id="evt"><thead><tr><th>Game clock</th><th>Event</th><th>Result</th><th>Timing</th></tr></thead><tbody></tbody></table></div>
+  <div class="card">
+   <div class="big3" id="evsum"></div>
+   <h3>What this means</h3>
+   <ul>
+    <li><b>Every score was caught:</b> all 4 touchdowns, both extra points and both two-point conversions, on the frame the scorebug changed.</li>
+    <li><b>The story of the comeback is there:</b> the tie at 2:00, the lead change at 1:54, and the turnover on downs that sealed it.</li>
+    <li><b>The overturned two-point call</b> at 7:52 was read correctly: review shown, then the score moving to 32.</li>
+    <li><b>No false alarms.</b> Nothing was reported that did not happen.</li>
+   </ul>
+   <h3 style="margin-top:12px">The 3 misses</h3>
+   <ul>
+    <li><b>Review at 10:24:</b> on screen for one frame; the detector waits for two. With a one-frame setting it is caught (15 of 17, still no false alarms).</li>
+    <li><b>Bengals timeout:</b> Clef is unsure counting the small timeout dashes.</li>
+    <li><b>Game end:</b> our rule looked for a kneel-down, which Clef never called.</li>
+   </ul>
+  </div>
+ </div>
+</section>
+
+<section id="results">
+ <h2>How good was it</h2>
+ <p class="sub">Accuracy per question. The white tick is the score you would get by always giving the most common answer; a question only "works" if the bar is clearly past it.</p>
+ <div class="two">
+  <div class="card"><div id="bars"></div>
+   <p class="note"><span style="color:var(--gB)">&#9632;</span> scorebug &nbsp; <span style="color:var(--gA)">&#9632;</span> layout &nbsp;
+    <span style="color:var(--gC)">&#9632;</span> scene * &nbsp; <span style="color:var(--gD)">&#9632;</span> editorial * &nbsp;&middot;&nbsp; faded bars are soft-label questions &nbsp;&middot;&nbsp; red number = below the always-guess line</p></div>
+  <div>
+   <div class="card" style="margin-bottom:14px"><h3>The short version</h3>
+    <ul>
+     <li><b>Reading what is printed on screen is essentially solved.</b> Both scores, the clock, the down and the scorebug message were right on every frame where the scorebug was visible (316 frames).</li>
+     <li><b>It reads the scorebug equally well on any shot:</b> game action, coach close-ups and sideline shots all scored 98%.</li>
+     <li><b>Judgement questions are much weaker.</b> Highlight-worthy, safe-for-an-ad-break, replay and yards-to-goal barely beat, or fall below, the always-guess line.</li>
+     <li><b>Two scorebug weak spots:</b> counting the Bengals' timeouts (85%), and possession when the Jets have the ball (11 misses).</li>
+    </ul></div>
+   <div class="card"><h3>It knows when it is unsure</h3>
+    <table id="cal"><thead><tr><th>Clef's stated confidence</th><th>Answers</th><th>Actually correct</th></tr></thead><tbody></tbody></table>
+    <p class="note">Over half of all answers come with 90%+ confidence, and those are right 99% of the time. Low-confidence answers can simply be ignored, which is what the event detector does.</p></div>
+  </div>
+ </div>
+</section>
+
+<section id="how">
+ <h2>How it was done</h2>
+ <div class="steps">
+  <div><b>Frames.</b> 408 stills, one every 5 s, covering the whole 4th quarter (about 34 minutes of video).</div>
+  <div><b>Questions.</b> 24 fixed multiple-choice questions, plus a short description of where the scorebug is and what to ignore.</div>
+  <div><b>Clef.</b> Each frame goes in with a zoomed crop of the scorebug. Clef returns a probability for every option, in about 2 seconds.</div>
+  <div><b>Truth.</b> Scorebug labels read from every frame and cross-checked against the official play-by-play. Other labels drafted by AI and spot-checked.</div>
+  <div><b>Events.</b> An answer must be 60%+ confident and hold for 2 frames before it counts. Recorded once; this page only replays files.</div>
+ </div>
+
+ <div class="cols3" style="margin-top:14px">
+  <div class="card warn"><h3>Caveats</h3>
+   <ul>
+    <li><b>We made it easy.</b> We told Clef exactly where the scorebug is, what each part means and what to ignore, and gave it a zoomed crop. A different network's graphics would need a new description.</li>
+    <li><b>One quarter, one game, one broadcast.</b> Some answers barely vary here (quarter, Jets timeouts), so their scores prove little.</li>
+    <li><b>The labels were read by one AI reader</b> from the same frames. The play-by-play agrees on all but 12 frames, but nobody independently re-labelled.</li>
+    <li><b>Stills, not video.</b> Anything that needs motion or the previous few seconds is out of reach.</li>
+    <li><b>Event timing is measured against the scorebug,</b> not the live play. The scorebug itself updates some seconds after the play.</li>
+   </ul></div>
+  <div class="card star"><h3>The asterisks *</h3>
+   <ul>
+    <li>Nine questions carry <b>soft labels</b>: replay, play phase, yard markers, yards to goal, celebration, highlight-worthy, ad-break safe and the two sponsor questions.</li>
+    <li>Their labels are <b>one reader's judgement from a small still</b>, only spot-checked, and known to contain mistakes.</li>
+    <li><b>Sponsor labels are the weakest.</b> Small logos, such as a headset brand, were missed in the labels, so Clef looks worse here than it probably is.</li>
+    <li>These numbers are <b>indicative only</b> and are kept out of the headline 98%.</li>
+   </ul></div>
+  <div class="card avoid"><h3>What we left out</h3>
+   <ul>
+    <li><b>Clef only ever saw stills.</b> One frame every 5 s; none are stored in the repo.</li>
+    <li><b>No YouTube player.</b> The video above streams from a copy of the 4th quarter hosted for this demo with permission, so the answers can be drawn on it.</li>
+    <li><b>Questions a still cannot answer were dropped:</b> referee signals, and "has the whistle blown".</li>
+    <li><b>Not attempted:</b> the game clock to the second, player identification, or the play type (run or pass).</li>
+    <li><b>The smaller, cheaper Clef-Flash model</b> has not been run on this footage.</li>
+   </ul></div>
+ </div>
+</section>
+
+<section id="next">
+ <h2>What comes next</h2>
+ <div class="card next">
+  <ul>
+   <li><b>Add the commentary.</b> Give Clef the last 10 seconds of captions with each frame. The scorebug questions are already near-perfect, so the value is in <b>new questions the picture alone cannot answer</b>: what kind of play it was, who was involved, why a flag was thrown.</li>
+   <li><b>Make it harder.</b> Fewer hints about the layout, a different broadcast or network, and a full game, to see how much of the 98% survives.</li>
+   <li><b>Fix the known gaps cheaply:</b> read "TIMEOUT" and "FINAL" from the scorebug message, and react to a single frame for reviews.</li>
+   <li><b>Get the judgement labels reviewed by a person</b> before quoting any highlight, ad-break or sponsor figure to a client.</li>
+  </ul>
+ </div>
+</section>
+
+<footer id="foot"></footer>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const GROUPS = [
+ ['Scorebug', 'gB', 'L', [['jets_score', 'Jets score'], ['bengals_score', 'Bengals score'], ['quarter', 'Quarter'], ['clock_minutes', 'Clock (minute)'],
+   ['scorebug_message', 'Message'], ['panel_colour', 'Panel colour'], ['possession', 'Possession'], ['down', 'Down'], ['distance', 'Distance'],
+   ['jets_timeouts', 'Jets timeouts'], ['bengals_timeouts', 'Bengals timeouts'], ['review_banner', 'Review banner']]],
+ ['Layout', 'gA', 'R', [['main_view', 'Main view'], ['scorebug_visible', 'Scorebug on screen'], ['replay_showing', 'Replay'], ['info_overlay', 'Info graphic']]],
+ ['Scene', 'gC', 'R', [['play_phase', 'Play phase'], ['yard_markers_visible', 'Yard markers'], ['yards_to_goal', 'Yards to goal'], ['celebration', 'Celebration']]],
+ ['Editorial', 'gD', 'R', [['highlight_worthy', 'Highlight-worthy'], ['ad_break_safe', 'Ad-break safe'], ['sponsor_visible', 'Sponsor visible'], ['sponsor_placement', 'Sponsor where']]]];
+const EV = {touchdown_jets: 'Touchdown, Jets', touchdown_bengals: 'Touchdown, Bengals', extra_point_good: 'Extra point good', two_point_good: 'Two-point conversion good',
+ tie: 'Game tied', lead_change: 'Lead change', possession_change: 'Possession change', timeout_bengals: 'Timeout, Bengals', timeout_jets: 'Timeout, Jets',
+ penalty: 'Penalty flag', replay_review: 'Replay review', game_end: 'Game end', first_down: 'First down', two_point_attempt: 'Two-point attempt',
+ field_goal_jets: 'Field goal, Jets', field_goal_bengals: 'Field goal, Bengals', conversion_no_good: 'Conversion no good'};
+const SUB = {punt: 'punt', turnover_on_downs: 'turnover on downs', upheld: 'call stands', reversed: 'call overturned'};
+const evName = e => (EV[e.event] || e.event) + (SUB[e.subtype] ? ` (${SUB[e.subtype]})` : '');
+const nice = v => String(v).replace(/_/g, ' ');
+const pct = x => Math.round(x * 100) + '%';
+const mmss = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+
+// ---- the overlay (docs/overlay.md) ----
+const SRC_W = 1920, SRC_H = 1080, HOLD_S = 10;
+// fixed graphics, measured on full-resolution frames: x, y, w, h in source pixels
+const BOX = {bug: [554, 912, 812, 118], banner: [554, 866, 812, 44], js: [700, 922, 102, 66], bs: [1115, 922, 107, 66],
+  msg: [813, 914, 293, 54], qtr: [832, 978, 68, 42], clk: [935, 978, 100, 42], jto: [692, 1004, 110, 18], bto: [1115, 1004, 115, 18]};
+const FIGS = {js: ['jets_score'], bs: ['bengals_score'], msg: ['scorebug_message', 'panel_colour', 'possession', 'down', 'distance'],
+  qtr: ['quarter'], clk: ['clock_minutes'], jto: ['jets_timeouts'], bto: ['bengals_timeouts']};
+const BADGE = new Set(['js', 'bs', 'msg', 'clk']);
+const BOXQ = [['play_phase', 'Play phase'], ['yards_to_goal', 'Yards to goal'], ['sponsor_visible', 'Sponsor on screen']];
+const NO_INFO = new Set(['cant_tell', 'not_visible', 'not_shown', 'none']);
+const MINOR = new Set(['first_down', 'two_point_attempt']);
+const TEAM = {jets: 'Jets', bengals: 'Bengals'};
+const ORD = {1: '1st', 2: '2nd', 3: '3rd', 4: '4th', ot: 'OT'};
+const SAY = {touchdown_jets: 'Touchdown, Jets', touchdown_bengals: 'Touchdown, Bengals', extra_point_good: 'The extra point is good',
+  two_point_good: 'The two-point conversion is good', two_point_attempt: 'Lining up for a two-point try', tie: 'The game is tied', lead_change: 'Lead change',
+  possession_change: 'Change of possession', first_down: 'First down', timeout_jets: 'Timeout, Jets', timeout_bengals: 'Timeout, Bengals',
+  penalty: 'Flag on the play', replay_review: 'The play is under review', game_end: 'Game over', field_goal_jets: 'Field goal, Jets',
+  field_goal_bengals: 'Field goal, Bengals', conversion_no_good: 'The conversion is no good'};
+const FMT = {
+  main_view: {game_action: 'Game action', coach_closeup: 'Coach close-up', sideline_or_bench: 'Sideline / bench', crowd: 'Crowd',
+    booth_or_studio: 'Commentary booth', full_screen_graphic: 'Full-screen graphic', advert: 'Advert', other: 'Other shot'},
+  scorebug_message: {down_and_distance: 'down & distance', flag: 'FLAG', two_point_attempt: '2-PT ATTEMPT', under_review: 'UNDER REVIEW',
+    network_logo: 'CBS logo', other: 'other message', not_visible: 'not visible'},
+  info_overlay: {player_stats: 'player stats', team_or_game_stats: 'team stats', analyst_or_commentator_name: 'name caption', none: 'none'},
+  review_banner: {review_reason: 'review reason', call_overturned: 'CALL OVERTURNED', call_stands: 'CALL STANDS', none: 'none'},
+  play_phase: {pre_snap_lined_up: 'Lined up, pre-snap', play_in_progress: 'Play in progress', kickoff: 'Kickoff', punt: 'Punt', field_goal: 'Field goal',
+    extra_point_or_two_point_try: 'Conversion try', kneel_down: 'Kneel-down', not_a_play_shot: 'Not a play shot'},
+  sponsor_placement: {field_or_stadium_boards: 'Stadium boards', broadcast_graphic: 'Broadcast graphic', uniform_or_equipment: 'Uniform / equipment', none: 'None'},
+};
+function fmt(q, v) {
+  if (FMT[q] && FMT[q][v]) return FMT[q][v];
+  if (v === 'cant_tell') return "can't tell";
+  if (v === 'not_shown' || v === 'not_visible') return 'not shown';
+  if (q === 'down' || q === 'quarter') return ORD[v] || v;
+  if (q === 'distance') return v === 'goal' ? '& goal' : '& ' + v.replace('-', '–');
+  if (q === 'possession') return TEAM[v] ? TEAM[v] + ' ball' : nice(v);
+  if (q === 'clock_minutes') return v + ':xx';
+  if (q === 'yards_to_goal') return v.replace('-', '–') + ' yd';
+  if (q === 'celebration') return TEAM[v] || 'None';
+  return nice(v).replace(/^./, c => c.toUpperCase());
+}
+const box = ([x, y, w, h]) => `left:${x / SRC_W * 100}%;top:${y / SRC_H * 100}%;width:${w / SRC_W * 100}%;height:${h / SRC_H * 100}%`;
+
+let T, M, F, S, ST, SP, EVG, MISSES, soft, vid, cur = -2, dur = 0, lastTimed = '';
+
+// One helper for every rule: Clef's answer on frame i, whether it matches the label, and whether it is fresh.
+function A(i, q) {
+  const f = F[i], a = f.answers[q] || {a: '?', c: 0}, lab = f.truth[q], at = k => k >= 0 ? (F[k].answers[q] || {}).a : undefined;
+  return {q, a: a.a, c: a.c, lab, low: a.c < M.min_conf, grey: !!(f.grey && f.grey[q]) && lab !== a.a,
+    ok: lab === undefined ? null : lab === a.a, fresh: i < 2 || a.a !== at(i - 1) || at(i - 1) !== at(i - 2)};
+}
+const cls = r => r.ok === null ? 'na' : r.ok ? 'ok' : r.grey ? 'grey' : 'bad';
+const worst = rs => rs.some(r => cls(r) === 'bad') ? 'bad' : rs.some(r => cls(r) === 'grey') ? 'grey' : rs.some(r => r.ok) ? 'ok' : 'na';
+const should = r => cls(r) === 'bad' ? `should be ${fmt(r.q, r.lab)}` : '';
+const part = (r, text) => `<span class="pt ${cls(r)}${r.low ? ' low' : ''}">${text}<span class="tk"></span>${cls(r) === 'bad' ? `<span class="sb"> (is ${fmt(r.q, r.lab)})</span>` : ''}</span>`;
+const tagHtml = (r, text) => `${text}<span class="pc">${pct(r.c)}</span><span class="tk"></span>${should(r) ? `<span class="sb"> &middot; ${should(r)}</span>` : ''}`;
+function setCls(el, base, extra) { el.className = [base, ...extra.filter(Boolean)].join(' '); }
+
+// frame i is on screen from when Clef's answer for it arrived (S[i]) until the next one arrives
+function frameAt(x) { let i = -1; while (i + 1 < F.length && S[i + 1] <= x) i++; return i; }
+const ytIndex = t => { let b = 0; F.forEach((f, k) => { if (Math.abs(f.t - t) < Math.abs(F[b].t - t)) b = k; }); return b; };
+const ytToFile = t => { const f = F[ytIndex(t)]; return t - (f.t - f.v); };
+
+function buildOverlay() {
+  $('ov').innerHTML = `<div class="ob" id="o-bug" style="${box(BOX.bug)}"></div>
+    ${Object.keys(FIGS).map(k => `<div class="ofig${BADGE.has(k) ? ' badge' : ''}" id="o-${k}" style="${box(BOX[k])}"><i>&#10003;</i></div>`).join('')}
+    <div class="ob" id="o-ban" style="${box(BOX.banner)}"><span id="o-banlab"></span></div>
+    <div id="o-read" style="left:${(BOX.bug[0] + BOX.bug[2] / 2) / SRC_W * 100}%;top:${(BOX.bug[1] + BOX.bug[3] + 4) / SRC_H * 100}%"></div>
+    <div id="o-tags"><div class="otag" id="tg-view"></div><div class="otag" id="tg-nobug"></div><div class="otag" id="tg-rep"></div><div class="otag" id="tg-info"></div></div>
+    <div class="oev" id="o-ev"><b></b><small></small></div><div class="oev" id="o-miss"><b></b><small></small></div>
+    <div id="o-box"><div class="bh">Clef on the field</div>${BOXQ.map(([q, name]) => `<div class="row" id="sr-${q}"><span class="k">${name}</span><span class="v"></span><span class="sb"></span></div>`).join('')}</div>
+    <div id="o-wait">Clef has not answered a frame yet</div>`;
+}
+
+function applyFrame(i) {
+  $('ov').classList.toggle('nof', i < 0);
+  if (i < 0) { ['notes', 'ed', 'rnote'].forEach(id => $(id).style.visibility = 'hidden'); return; }
+  ['notes', 'ed', 'rnote'].forEach(id => $(id).style.visibility = '');
+  const R = q => A(i, q);
+
+  // main shot type: always, top-left
+  const view = R('main_view');
+  $('tg-view').innerHTML = tagHtml(view, fmt('main_view', view.a)); setCls($('tg-view'), 'otag', [cls(view), view.low && 'low']);
+
+  // the scorebug: outline while Clef says it is there; dashed red if it is there and Clef missed it
+  const sbv = R('scorebug_visible'), on = sbv.a === 'yes';
+  setCls($('o-bug'), 'ob', [on && 'on', on && sbv.ok === false && !sbv.grey && 'bad', !on && sbv.lab === 'yes' && !sbv.grey && 'missed']);
+  for (const [k, qs] of Object.entries(FIGS)) setCls($('o-' + k), 'ofig', on ? [BADGE.has(k) && 'badge', worst(qs.map(R))] : []);
+  // "No scorebug": shown for 10 s after it goes, then nothing; a wrong call stays
+  $('tg-nobug').innerHTML = tagHtml(sbv, 'No scorebug');
+  setCls($('tg-nobug'), 'otag', [cls(sbv), (on || !sbv.fresh) && 'gone', !on && cls(sbv) === 'bad' && 'keep']);
+
+  // what Clef read off the scorebug, written just under it
+  const js = R('jets_score'), bs = R('bengals_score'), msg = R('scorebug_message'), pos = R('possession');
+  const msgPart = msg.a === 'down_and_distance' ? part(R('down'), fmt('down', R('down').a)) + ' ' + part(R('distance'), fmt('distance', R('distance').a))
+    : part(msg, fmt('scorebug_message', msg.a));
+  $('o-read').innerHTML = `<span class="rl">Clef reads</span><span>JETS ${part(js, js.a)} &ndash; ${part(bs, bs.a)} BENGALS</span>
+    <span>${part(R('quarter'), fmt('quarter', R('quarter').a))} ${part(R('clock_minutes'), fmt('clock_minutes', R('clock_minutes').a))}</span>
+    <span>${msgPart}</span>${TEAM[pos.a] || cls(pos) === 'bad' ? `<span>${part(pos, fmt('possession', pos.a))}</span>` : ''}
+    <span>TO ${part(R('jets_timeouts'), R('jets_timeouts').a)}&middot;${part(R('bengals_timeouts'), R('bengals_timeouts').a)}</span>`;
+  $('o-read').classList.toggle('on', on);
+
+  // review banner above the scorebug
+  const rb = R('review_banner'), rbOn = rb.a !== 'none';
+  $('o-banlab').innerHTML = rbOn ? `Clef: ${tagHtml(rb, fmt('review_banner', rb.a))}` : `Missed a banner: ${fmt('review_banner', rb.lab)}`;
+  setCls($('o-ban'), 'ob', [rbOn && 'on', rbOn && cls(rb) === 'bad' && 'bad', !rbOn && rb.lab && rb.lab !== 'none' && cls(rb) === 'bad' && 'missed']);
+
+  // rare yes/no: a replay is tagged when it starts and fades after 10 s; a wrong answer stays
+  const rep = R('replay_showing');
+  $('tg-rep').innerHTML = tagHtml(rep, rep.a === 'yes' ? 'REPLAY' : `Replay: ${fmt('replay_showing', rep.a)}`);
+  setCls($('tg-rep'), 'otag', [cls(rep), !(rep.a === 'yes' && rep.fresh) && 'gone', cls(rep) === 'bad' && 'keep']);
+  // info graphics come and go in different places, so they get a tag, shown while Clef says one is there
+  const inf = R('info_overlay');
+  $('tg-info').innerHTML = tagHtml(inf, `Info graphic: ${fmt('info_overlay', inf.a)}`);
+  setCls($('tg-info'), 'otag', [cls(inf), inf.a === 'none' && 'gone', cls(inf) === 'bad' && 'keep']);
+
+  // the box on the picture: dim while unchanged, full for 10 s after a change; wrong stays full, in red.
+  // Yards to goal only while Clef says the yard lines are visible.
+  const yl = R('yard_markers_visible');
+  for (const [q] of BOXQ) {
+    const r = R(q), el = $('sr-' + q);
+    el.querySelector('.v').innerHTML = `${fmt(q, r.a)}<span class="pc">${pct(r.c)}</span><span class="tk"></span>`;
+    el.querySelector('.sb').textContent = should(r);
+    setCls(el, 'row', [cls(r), r.low && 'low', !r.fresh && 'dim', q === 'yards_to_goal' && (yl.a !== 'yes' || r.a === 'cant_tell') && 'gone', cls(r) === 'bad' && 'keep']);
+  }
+  // side notes in the strip: celebration, where the sponsor was spotted, sponsor seconds so far
+  const cel = R('celebration'), spw = R('sponsor_placement'), sp = SP[i];
+  $('notes').innerHTML = `<span>Celebrating: ${part(cel, fmt('celebration', cel.a))}<span class="pc">${pct(cel.c)}</span></span>
+    <span>Sponsor spotted on: ${part(spw, fmt('sponsor_placement', spw.a).toLowerCase())}<span class="pc">${pct(spw.c)}</span></span>
+    <span>Sponsor on screen so far: <b style="color:var(--fg)">${mmss(sp.total)}</b>` +
+    (sp.total ? ' (' + Object.entries(sp.by).sort((a, b) => b[1] - a[1]).map(([p, s]) => `${p === 'none' ? 'place not given' : fmt('sponsor_placement', p).toLowerCase()} ${s} s`).join(', ') + ')' : '') + `</span>`;
+
+  // the strip: editorial answers, a tally for truth mode, grey areas, the replay note
+  const hw = R('highlight_worthy'), ab = R('ad_break_safe');
+  let ok = 0, n = 0; for (const q in F[i].truth) { n++; ok += A(i, q).ok || A(i, q).grey; }
+  $('ed').innerHTML = `<span>Highlight moment? ${part(hw, fmt('highlight_worthy', hw.a))}<span class="pc">${pct(hw.c)}</span></span>
+    <span>Safe to cut to an ad? ${part(ab, fmt('ad_break_safe', ab.a))}<span class="pc">${pct(ab.c)}</span></span>
+    <span class="tally">This frame: <b style="color:var(--fg)">${ok} of ${n}</b> answers match the labels</span>`;
+  const g = F[i].grey ? Object.entries(F[i].grey).filter(([q]) => A(i, q).grey) : [];
+  $('grey').innerHTML = g.map(([q, why]) => `* Grey area (${nice(q)}): ${why}`).join('<br>');
+  $('grey').classList.toggle('on', g.length > 0);
+  $('rnote').innerHTML = `Replay of a recorded run. Clef saw frame ${i + 1} of ${F.length} (taken at ${mmss(F[i].v)}) and answered ${F[i].lat.toFixed(1)} s later.
+    It sees one frame every ${M.sample_interval_s} s, and each answer holds until the next one.`;
+}
+
+// event banners and the message line depend on the time, not only the frame
+function timed(x, i) {
+  const recent = EVG.filter(g => g.at <= x && x < g.at + HOLD_S).pop();
+  const miss = MISSES.filter(m => m.at <= x && x < m.at + HOLD_S).pop();
+  const key = `${i}|${recent ? recent.at : ''}|${miss ? miss.at : ''}`;
+  if (key === lastTimed) return;
+  lastTimed = key;
+  const ev = $('o-ev');
+  if (recent) {
+    ev.querySelector('b').textContent = recent.evs.filter(e => !MINOR.has(e.event)).concat(recent.evs.filter(e => MINOR.has(e.event))).map(evName).join(' · ').toUpperCase();
+    const e0 = recent.evs[0], ev0 = e0.evidence;
+    const name = (GROUPS.flatMap(g => g[3]).find(([q]) => q === ev0.question) || [, nice(ev0.question)])[1], v = x => x == null ? '–' : fmt(ev0.question, x);
+    ev.querySelector('small').textContent = `Clef read the scorebug: ${name} ${v(ev0.from)} → ${v(ev0.to)} (${ev0.confidences.map(pct).join(', ')} sure)` +
+      (recent.hit ? ' · ✓ real event' : '');
+  }
+  setCls(ev, 'oev', [recent && 'on', recent && recent.hit && 'ok']);
+  if (miss) { $('o-miss').querySelector('b').textContent = 'Missed: ' + evName(miss.e); $('o-miss').querySelector('small').textContent = 'Clef did not report this event'; }
+  setCls($('o-miss'), 'oev', [miss && 'on']);
+  $('msg').innerHTML = i < 0 ? '<b>Clef &#9656;</b> waiting for its first answer.' : '<b>Clef &#9656;</b> ' + (recent ? sayEvents(recent) : sayState(i));
+}
+function sayEvents(g) {
+  const s = ST[g.i], parts = g.evs.map(e => SAY[e.event] + (e.event === 'possession_change' && SUB[e.subtype] ? ` (${SUB[e.subtype]})` : '')
+    + (e.event === 'first_down' && TEAM[s.possession] ? `, ${TEAM[s.possession]}` : ''));
+  const scored = g.evs.some(e => /touchdown|extra|two_point_good|field_goal|tie|lead|safety/.test(e.event));
+  return parts.join('. ') + '.' + (scored ? ` Scorebug now Jets ${s.jets_score}, Bengals ${s.bengals_score}.` : '');
+}
+function sayState(i) {
+  const s = ST[i], score = `Jets ${s.jets_score ?? '?'}, Bengals ${s.bengals_score ?? '?'}`;
+  if (A(i, 'scorebug_visible').a !== 'yes') return `No scorebug on screen (${fmt('main_view', A(i, 'main_view').a).toLowerCase()}). Last read: ${score}.`;
+  const down = s.down ? `, ${ORD[s.down]} ${fmt('distance', s.distance || 'not_shown').replace('not shown', '').trim()}` : '';
+  return `${TEAM[s.possession] ? TEAM[s.possession] + ' ball' + down + ' · ' : s.down ? down.slice(2) + ' · ' : ''}${ORD[s.quarter] || '?'} quarter, ${s.clock_minutes ?? '?'} min on the clock · ${score}.`;
+}
+
+function tick() {
+  const x = vid.currentTime, i = frameAt(x);
+  if (i !== cur) { cur = i; applyFrame(i); }
+  timed(x, i);
+  const p = dur ? Math.min(100, x / dur * 100) : 0;
+  document.querySelector('#seek .head').style.left = p + '%'; document.querySelector('#seek .fill').style.width = p + '%';
+  $('clock').textContent = `${mmss(x)} / ${mmss(dur)}`;
+  requestAnimationFrame(tick);
+}
+
+const fsEl = () => document.fullscreenElement || document.webkitFullscreenElement;
+function toggleFS() {
+  if (fsEl()) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+  else { const s = $('stage'); (s.requestFullscreen || s.webkitRequestFullscreen).call(s); }
+}
+const togglePlay = () => vid.paused ? vid.play() : vid.pause();
+const toggleTruth = () => $('btr').classList.toggle('on', $('stage').classList.toggle('truth'));
+const toggleOverlay = () => $('bov').classList.toggle('on', !$('stage').classList.toggle('ovoff'));
+const seekFile = x => { vid.currentTime = Math.max(0, Math.min(dur || 1e9, x)); };
+const seekYT = (t, scroll) => { seekFile(ytToFile(t) - 4); if (scroll) $('watch').scrollIntoView(); };
+
+function markers() {
+  const at = x => `left:${x / dur * 100}%`;
+  $('seek').querySelectorAll('.sm').forEach(m => m.remove());
+  $('seek').insertAdjacentHTML('beforeend', EVG.map(g => `<div class="sm${g.evs.every(e => MINOR.has(e.event)) ? ' minor' : ''}" style="${at(g.at)}" title="${g.evs.map(evName).join(', ')}"></div>`).join('')
+    + MISSES.map(m => `<div class="sm miss" style="${at(m.at)}" title="Missed: ${evName(m.e)}"></div>`).join(''));
+}
+
+function setupWatch() {
+  F = T.frames;
+  const lat = F.map(f => f.lat).filter(Boolean).sort((a, b) => a - b), medLat = lat[lat.length >> 1] || 2;
+  F.forEach(f => { if (!f.lat) f.lat = medLat; });
+  S = F.map(f => f.v + f.lat);
+  // last confident reading of each scorebug field, for the message line
+  let s = {}; ST = F.map(f => { s = {...s}; for (const q of ['jets_score', 'bengals_score', 'possession', 'down', 'distance', 'quarter', 'clock_minutes']) {
+    const a = f.answers[q]; if (a && a.c >= M.min_conf && !NO_INFO.has(a.a)) s[q] = a.a; } return s; });
+  // sponsor seconds so far, from Clef's answers alone
+  let sp = {total: 0, by: {}}; SP = F.map(f => { const v = f.answers.sponsor_visible, p = f.answers.sponsor_placement;
+    if (v && v.a === 'yes' && v.c >= M.min_conf) { sp = {total: sp.total + M.sample_interval_s, by: {...sp.by}};
+      const k = p && p.a !== 'none' ? p.a : 'none'; sp.by[k] = (sp.by[k] || 0) + M.sample_interval_s; } return sp; });
+  // events, shown when Clef's answer on the frame that confirmed them arrived; grouped when several land together
+  const groups = new Map();
+  for (const e of T.events) {
+    const i = ytIndex(e.known_t ?? e.t), g = groups.get(i) || {i, at: S[i], evs: [], hit: false};
+    g.evs.push(e); g.hit ||= T.scoring.some(sc => sc.event === e.event && sc.detected_t === e.t); groups.set(i, g);
+  }
+  EVG = [...groups.values()].sort((a, b) => a.at - b.at);
+  MISSES = T.scoring.filter(sc => sc.detected_t === null).map(sc => ({e: sc, at: S[ytIndex(sc.t)]}));
+  buildOverlay();
+
+  vid = $('vid');
+  if (!M.video_file_url) { $('vmsg').textContent = 'No video file is configured (config.yaml: video.file_url).'; return; }
+  vid.src = M.video_file_url;
+  vid.addEventListener('loadedmetadata', () => {
+    dur = vid.duration; $('vmsg').textContent = ''; markers();
+    const want = new URLSearchParams(location.hash.slice(1)); if (want.get('t')) seekYT(+want.get('t'));
+  });
+  vid.addEventListener('error', () => { $('vmsg').textContent = 'The video stream could not be loaded. Check the connection, or open it in Chrome.'; });
+  vid.addEventListener('play', () => $('play').innerHTML = '&#10074;&#10074; Pause');
+  vid.addEventListener('pause', () => $('play').innerHTML = '&#9654; Play');
+  vid.addEventListener('click', togglePlay);
+  vid.addEventListener('dblclick', toggleFS);
+  $('play').onclick = togglePlay; $('bfs').onclick = toggleFS; $('btr').onclick = toggleTruth; $('bov').onclick = toggleOverlay;
+  $('bmute').onclick = () => { vid.muted = !vid.muted; $('bmute').textContent = vid.muted ? 'Sound off' : 'Sound on'; };
+  $('rate').onchange = () => vid.playbackRate = +$('rate').value;
+  let drag = false; const seekAt = e => { const r = $('seek').getBoundingClientRect(); seekFile((e.clientX - r.left) / r.width * dur); };
+  $('seek').onpointerdown = e => { drag = true; $('seek').setPointerCapture(e.pointerId); seekAt(e); };
+  $('seek').onpointermove = e => { if (drag) seekAt(e); };
+  $('seek').onpointerup = () => drag = false;
+  addEventListener('keydown', e => {
+    if (/INPUT|SELECT|TEXTAREA/.test(e.target.tagName) || e.ctrlKey || e.metaKey || e.altKey) return;
+    const k = e.key.toLowerCase();
+    if (k === ' ' || k === 'k') { e.preventDefault(); togglePlay(); }
+    else if (k === 'f') toggleFS(); else if (k === 'o') toggleOverlay(); else if (k === 't') toggleTruth();
+    else if (k === 'i') $('stage').classList.toggle('noinfo');
+    else if (fsEl() && (k === 'arrowleft' || k === 'arrowright')) { e.preventDefault(); seekFile(vid.currentTime + (k === 'arrowright' ? 5 : -5)); }
+  });
+  const JUMP = [['Jets TD', 5202], ['2-pt try', 5227], ['Bengals TD', 5602], ['Jets TD #2', 5937], ['Under review', 6062], ['Call overturned', 6117],
+    ['Tying TD', 6702], ['Lead change', 6737], ['4th-down stop', 7042], ['Final', 7127]];
+  $('chips').innerHTML = '<span class="chip" style="border:0;background:none;padding-left:0;cursor:default">Jump to:</span>' + JUMP.map(([n, x]) => `<span class="chip" data-t="${x}"><b>${n}</b></span>`).join('');
+  $('chips').querySelectorAll('[data-t]').forEach(c => c.onclick = () => seekYT(+c.dataset.t));
+  requestAnimationFrame(tick);
+}
+
+function setup() {
+  M = T.meta; soft = new Set(M.soft_labels);
+  const X = T.metrics, hits = T.scoring.filter(s => s.detected_t !== null).length;
+  $('t1').textContent = pct(X.group_accuracy_firm['B. Scorebug']);
+  $('t2').textContent = `${hits} of ${T.scoring.length}`; $('t2b').textContent = T.false_positives.length === 0 ? 'no' : T.false_positives.length;
+  $('t3').textContent = '$' + X.cost_usd_per_broadcast_hour.toFixed(2);
+  $('t4').textContent = X.latency_median_s.toFixed(1) + ' s';
+  setupWatch();
+
+  $('evt').tBodies[0].innerHTML = T.scoring.map(s => `<tr class="ev" data-t="${s.t}"><td>${s.game_clock.replace(/^0/, '')}</td><td>${evName(s)}</td>
+    <td><span class="pill ${s.detected_t === null ? 'miss' : 'hit'}">${s.detected_t === null ? 'missed' : 'caught'}</span></td>
+    <td>${s.detected_t === null ? '' : s.delay_s === 0 ? 'same frame' : (s.delay_s > 0 ? '+' : '') + s.delay_s + ' s'}</td></tr>`).join('');
+  $('evt').querySelectorAll('tr.ev').forEach(r => r.onclick = () => seekYT(+r.dataset.t, true));
+  $('evsum').innerHTML = `<div><b style="color:var(--ok)">${hits}</b><span>caught</span></div><div><b style="color:var(--bad)">${T.scoring.length - hits}</b><span>missed</span></div>
+    <div><b>${T.false_positives.length}</b><span>false alarms</span></div>`;
+
+  // accuracy bars
+  $('bars').innerHTML = GROUPS.map(([g, col, , qs]) => qs.map(([q, name]) => {
+    const m = X.per_question[q]; if (!m) return '';
+    const under = m.accuracy < m.majority_baseline - 0.005;
+    return `<div class="bar${soft.has(q) ? ' softrow' : ''}${under ? ' under' : ''}" style="--c:var(--${col})" title="${name}: ${pct(m.accuracy)} on ${m.n} frames; always-guess ${pct(m.majority_baseline)}">
+      <span class="n${soft.has(q) ? ' soft' : ''}">${name}${soft.has(q) ? ' *' : ''}</span>
+      <div class="trk"><div class="fill" style="width:${m.accuracy * 100}%"></div><div class="base" style="left:${m.majority_baseline * 100}%"></div></div>
+      <span class="num">${pct(m.accuracy)} <small>vs ${pct(m.majority_baseline)}</small></span></div>`; }).join('')).join('');
+  $('cal').tBodies[0].innerHTML = X.calibration.slice().reverse().map(c => { const [lo, hi] = c.bin.split('-').map(Number);
+    return `<tr><td>${lo === 0 ? 'under 50%' : `${lo * 100}–${hi * 100}%`}</td><td>${c.n.toLocaleString()}</td><td><b style="color:${c.accuracy >= .9 ? 'var(--ok)' : c.accuracy >= .8 ? 'var(--warn)' : 'var(--bad)'}">${pct(c.accuracy)}</b></td></tr>`; }).join('');
+
+  $('foot').innerHTML = `Model ${M.model} &middot; question schema v${M.schema_version} &middot; run ${M.run_id} &middot; ${M.frames} frames &middot; this run cost $${M.cost_usd.toFixed(2)}.
+    Headline figure: ${pct(X.headline_accuracy_firm)} across the ${Object.keys(X.per_question).length - soft.size} firm-label questions.<br>
+    Video &copy; NFL (New York Jets at Cincinnati Bengals, 26 Oct 2025), used with permission for internal demonstration only. Play-by-play: nflverse. Model: Cloudflare Clef via OpenRouter. Full numbers: reports/accuracy.md.`;
+}
+fetch('replay/timeline.json').then(r => r.json()).then(x => { T = x; setup(); })
+  .catch(e => { $('err').textContent = 'Could not load replay/timeline.json. Serve this folder with "python -m http.server 8010" and open http://localhost:8010/ (' + e + ')'; });
+</script></body></html>

@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Clef NFL probe: capture player</title>
+<style>
+html,body{margin:0;background:#000;overflow:hidden}
+#player{width:1920px;height:1080px;display:block}
+</style></head><body>
+<div id="player"></div>
+<script>
+// Hosts the YouTube IFrame player for capture/capture_frames.py.
+//   embed.html?v=<video id>&settle=<seconds>
+// Exposes: window.ytReady, window.ytError (101/150 = embedding disabled), seekTo(t), playerInfo().
+const params = new URLSearchParams(location.search);
+const VIDEO_ID = params.get('v') || 'DG5G2uif0DU';
+const SETTLE_MS = 1000 * Number(params.get('settle') || 1);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+let player;
+window.ytReady = false;
+window.ytError = null;
+
+function onYouTubeIframeAPIReady() {
+  player = new YT.Player('player', {
+    width: 1920, height: 1080, videoId: VIDEO_ID,
+    playerVars: {controls: 0, disablekb: 1, rel: 0, iv_load_policy: 3, cc_load_policy: 0, playsinline: 1,
+                 mute: 1, autoplay: 1, origin: location.origin},
+    events: {
+      onReady: () => { player.mute(); window.ytReady = true; },
+      onError: e => { window.ytError = e.data; },
+    },
+  });
+}
+
+function playerInfo() {
+  const d = player.getVideoData ? player.getVideoData() : {};
+  return {state: player.getPlayerState(), time: player.getCurrentTime(), duration: player.getDuration(),
+          quality: player.getPlaybackQuality(), video_id: d.video_id || null, title: d.title || null,
+          error: window.ytError};
+}
+
+// Seek, keep the video playing (a paused embed shows a "More videos" overlay), wait until it is
+// PLAYING and the frame has settled, then return the player's real time.
+async function seekTo(t, timeoutMs = 20000) {
+  player.seekTo(t, true);
+  player.playVideo();
+  const deadline = Date.now() + timeoutMs;
+  while (player.getPlayerState() !== YT.PlayerState.PLAYING) {
+    if (window.ytError !== null) throw new Error('player error ' + window.ytError);
+    if (Date.now() > deadline) throw new Error('timed out waiting for PLAYING, state ' + player.getPlayerState());
+    await sleep(100);
+  }
+  await sleep(SETTLE_MS);
+  return playerInfo();
+}
+
+const tag = document.createElement('script');
+tag.src = 'https://www.youtube.com/iframe_api';
+document.head.appendChild(tag);
+</script></body></html>

@@ -1,0 +1,14 @@
+# NFL footage and anything derived from it is never committed
+data/frames*/
+data/captions/
+runs/
+.env
+__pycache__/
+*.pyc
+# contact sheets are NFL footage too
+reports/*contact_sheet*.jpg
+# replay page copies of the frames and screenshots of it are NFL footage too
+replay/frames/
+reports/replay_screenshot.png
+reports/story_*.png
+data/transcript.txt

@@ -1,0 +1,18 @@
+event,subtype,t_video,frame,game_clock,play_id,seen_as,description
+penalty,,5100.64,f_0001.png,15:00,3273,FLAG shown,"(15:00) ** Injury Update: CIN-20-D.Turner has returned to the game. PENALTY on NYJ-20-B.Hall, False Start, 5 yards, enforced at CIN 7 - No Play."
+touchdown_jets,,5201.13,f_0021.png,14:21,3322,score 16->22 (f_0020 shows '+6'),"(14:21) 20-B.Hall left guard for 5 yards, TOUCHDOWN."
+two_point_good,,5246.36,f_0030.png,14:17,3345,score 22->24,TWO-POINT CONVERSION ATTEMPT. 7-J.Fields rushes right tackle. ATTEMPT SUCCEEDS.
+touchdown_bengals,,5600.00,f_0101.png,10:24,3536,score 31->37,"(10:24) (Shotgun) 30-C.Brown right guard for 1 yard, TOUCHDOWN. The Replay Official reviewed the runner broke the plane ruling, and the play was Upheld. The rul"
+replay_review,upheld,5620.00,f_0105.png,10:24,3536,UNDER REVIEW shown,"(10:24) (Shotgun) 30-C.Brown right guard for 1 yard, TOUCHDOWN. The Replay Official reviewed the runner broke the plane ruling, and the play was Upheld. The rul"
+extra_point_good,,5640.00,f_0109.png,10:21,3586,score 37->38,"2-E.McPherson extra point is GOOD, Center-46-W.Wagner, Holder-8-R.Rehkow."
+touchdown_jets,,5935.00,f_0168.png,08:01,3719,score 24->30,"(8:01) (Shotgun) 20-B.Hall right end for 27 yards, TOUCHDOWN."
+replay_review,reversed,6030.00,f_0187.png,07:52,3742,UNDER REVIEW shown,"TWO-POINT CONVERSION ATTEMPT. 7-J.Fields pass to 32-I.Davis is complete. ATTEMPT FAILS. The Replay Official reviewed the short of the goal line ruling, and the "
+two_point_good,,6125.00,f_0206.png,07:52,3742,score 30->32,"TWO-POINT CONVERSION ATTEMPT. 7-J.Fields pass to 32-I.Davis is complete. ATTEMPT FAILS. The Replay Official reviewed the short of the goal line ruling, and the "
+possession_change,punt,6345.00,f_0250.png,07:04,3879,panel turns green,"(7:04) 8-R.Rehkow punts 57 yards to NYJ 21, Center-46-W.Wagner. 18-I.Williams to NYJ 42 for 21 yards (25-T.Brooks)."
+touchdown_jets,,6700.00,f_0321.png,02:00,4100,score 32->38,"(2:00) 20-B.Hall pass short right to 85-M.Taylor for 4 yards, TOUCHDOWN."
+tie,,6700.00,f_0321.png,02:00,4100,score level 38-38,"(2:00) 20-B.Hall pass short right to 85-M.Taylor for 4 yards, TOUCHDOWN."
+extra_point_good,,6735.00,f_0328.png,01:54,4137,score 38->39,"6-N.Folk extra point is GOOD, Center-42-T.Hennessy, Holder-14-A.McNamara."
+lead_change,,6735.00,f_0328.png,01:54,4137,Jets lead 39-38,"6-N.Folk extra point is GOOD, Center-42-T.Hennessy, Holder-14-A.McNamara."
+timeout_bengals,,6960.00,f_0373.png,00:37,4279,TIMEOUT shown,Timeout #1 by CIN at 00:37.
+possession_change,turnover_on_downs,7060.00,f_0393.png,00:32,4297,panel turns green,(:32) (Shotgun) 16-J.Flacco pass incomplete short middle to 80-A.Iosivas (29-J.Brownlee).
+game_end,,7100.00,f_0401.png,00:27,4320,kneel-down; FINAL shown from f_0406,(:27) 7-J.Fields kneels to CIN 46 for -1 yards.
