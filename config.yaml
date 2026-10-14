@@ -1,0 +1,51 @@
+# NYJ at CIN, 2025 Week 8. Window = the whole 4th quarter of the NFL's YouTube upload.
+video:
+  id: DG5G2uif0DU
+  url: https://youtu.be/DG5G2uif0DU
+  q4_start_video_s: 5095   # scorebug first reads 4th 15:00 at ~5096 s (coarse pass, 2026-10-12)
+  q4_end_video_s: 7130     # kneel-down at ~7096 s, FINAL graphic at ~7126 s; video ends at 7132.6 s
+  # Q4 cut hosted by Anand for the overlay page (cleared for internal use). Streamed, never downloaded.
+  # Its clock starts 5083.6 s after YouTube's; data/video_sync.csv (src/align_video.py) maps each capture.
+  file_url: https://media.s-anand.net/game-ny-jets-cincinnati-bengals.webm
+
+game:
+  id: 2025_08_NYJ_CIN
+  away: NYJ                # jets
+  home: CIN                # bengals
+  quarter: 4
+  pbp_path: data/pbp/nyj_cin_2025_w8.csv
+
+sample_interval_s: 5
+
+capture:
+  page_url: http://localhost:8010/capture/embed.html   # not 8000: another project's server uses it on this machine
+  width: 1920
+  height: 1080
+  settle_s: 1.0            # wait after the player reports PLAYING
+  seek_gap_s: 3.0          # one seek every ~3 s
+  max_drift_s: 1.5         # |t_actual - t_target| above this is flagged and re-captured
+  retries: 2
+
+model:
+  id: cloudflare/clef
+  provider: cloudflare   # pinned, no fallback (OpenRouter also lists a second provider)
+  price_per_m_input_usd: 0.24
+
+model_flash:
+  id: cloudflare/clef-flash
+  provider: cloudflare
+  price_per_m_input_usd: 0.038
+
+# Workers AI estimates tokens as base64 length / 4 before reading the image and
+# rejects with 413 past 65,536, so frames are re-encoded to JPEG under this size.
+image:
+  max_bytes: 150000
+  scorebug_box: [540, 850, 1380, 1035]   # left, top, right, bottom in the 1920x1080 frame; includes the review banner
+
+events:
+  min_conf: 0.6
+  persist_frames: 2
+  hit_window_s: [-5, 20]   # scorebugs update after the play, so detection is late by design
+  after_td_frames: 4       # extra point / two-point must follow a TD within this many frames
+
+schema_path: schema/questions.yaml

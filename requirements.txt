@@ -1,0 +1,8 @@
+httpx
+pyyaml
+pandas
+python-dotenv
+pillow
+truststore
+matplotlib
+playwright
