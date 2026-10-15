@@ -410,7 +410,7 @@ const ytToFile = t => { const f = F[ytIndex(t)]; return t - (f.t - f.v); };
 let EVL = [];
 function buildOverlay() {
   EVL = EVG.filter(g => g.evs.some(e => !MINOR.has(e.event)));
-  EVL.forEach(g => g.jump = Math.max(0, ytToFile(Math.min(...g.evs.map(e => e.t))) - 5));
+  EVL.forEach(g => g.jump = Math.max(0, g.at - 5));   // 5 s before the event banner appears (the time shown in the list)
   $('ov').innerHTML = `<div class="ob" id="o-bug" style="${box(BOX.bug)}"></div>
     ${Object.keys(FIGS).map(k => `<div class="ofig${BADGE.has(k) ? ' badge' : ''}" id="o-${k}" style="${box(BOX[k])}"><i>&#10003;</i></div>`).join('')}
     <div class="ob" id="o-ban" style="${box(BOX.banner)}"><span id="o-banlab"></span></div>
