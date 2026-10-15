@@ -26,6 +26,12 @@ Open http://localhost:8010/ in Chrome and scroll to **Watch it work**. Keys: **S
 **T** check against our labels, **O** overlay on/off, **I** hide the strip, **←/→** ±5 s in fullscreen.
 The page must be served (not opened as a file) so it can load `replay/timeline.json`.
 
+### Heads-up: the event banners run late
+
+- Clef sees **one frame every 5 s**, and the broadcast scorebug itself updates a few seconds after the play. Together that puts the event banners **5–10 s behind the action**, so in the video they often do not look synced with the play.
+- Sampling at **one frame per second** would put them almost on the play, at roughly **5× the cost** (around $6 per broadcast hour instead of $1.20).
+- This is the **cheap demo**: the sampling rate, not Clef's reading, is what holds the timing back.
+
 ---
 
 ## Contents
