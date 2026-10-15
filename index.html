@@ -178,21 +178,46 @@ ul{margin:6px 0 0;padding-left:18px} li{margin:3px 0} li b{color:var(--fg)}
 .steps b{color:var(--fg)}
 footer{color:var(--dim);font-size:12px;padding:26px 0 30px;border-top:1px solid var(--line);margin-top:34px}
 #err{color:var(--bad)}
+/* highlights and short bullet lists */
+.hl{font-weight:700;padding:0 .3em;border-radius:3px;white-space:nowrap}
+.hl.ok{background:rgba(62,207,142,.16);color:var(--ok)} .hl.bad{background:rgba(255,107,107,.16);color:var(--bad)}
+.hl.warn{background:rgba(245,165,36,.16);color:var(--warn)} .hl.acc{background:rgba(90,169,255,.16);color:var(--acc)}
+.facts{list-style:none;padding:0;margin:4px 0 0;display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.facts li{margin:0;background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--acc);border-radius:8px;padding:9px 12px;color:#c5ccd6;font-size:13.5px}
+.facts li small{display:block;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut);font-weight:700;margin-bottom:2px}
+.facts li b{color:var(--fg)}
+@media(max-width:1050px){.facts{grid-template-columns:1fr 1fr}} @media(max-width:600px){.facts,.tiles{grid-template-columns:1fr}}
+.callout{margin:12px 0 0;background:rgba(245,165,36,.07);border:1px solid #5a4417;border-left:4px solid var(--warn);border-radius:8px;padding:10px 14px}
+.callout h3{color:var(--warn);font-size:12px;letter-spacing:.12em;text-transform:uppercase;margin:0 0 4px}
+.callout ul{margin:0} .callout li{color:#c5ccd6}
+ul.pts{list-style:none;padding:0} ul.pts li{position:relative;padding-left:22px;color:#c5ccd6}
+ul.pts li::before{position:absolute;left:0;top:0;font-weight:700}
+ul.pts.ok li::before{content:"\2713";color:var(--ok)} ul.pts.bad li::before{content:"\2717";color:var(--bad)}
+ul.pts.dot li::before{content:"\25B8";color:var(--acc)} ul.pts.warn li::before{content:"!";color:var(--warn);left:4px}
+.card h3{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut)}
 </style></head><body><div class="wrap">
 
 <header>
  <span class="tag">Internal &middot; not for distribution</span>
  <h1>Can an AI model watch an NFL broadcast and tell us what is happening, <em>frame by frame</em>?</h1>
- <p class="lede">We gave <b>Cloudflare's Clef</b> one still frame every 5 seconds from the 4th quarter of <b>Jets at Bengals (Week 8, 2025)</b>
- and asked it the same 24 multiple-choice questions about each one: the score, the clock, who has the ball, what kind of shot it is.
- We then turned its answers into game events (touchdowns, conversions, reviews, the lead change) and checked everything against
- the official play-by-play. The aim: see whether this is accurate and cheap enough to drive auto-clipping, live app updates and archive tagging.</p>
+ <ul class="facts">
+  <li><small>What</small><b>Cloudflare's Clef</b> watches the 4th quarter of <b>Jets at Bengals</b> (Week 8, 2025)</li>
+  <li><small>How</small>One frame every <span class="hl acc">5 s</span>, the same <span class="hl acc">24 questions</span> each time: score, clock, possession, shot type&hellip;</li>
+  <li><small>Checked</small>Answers turned into <b>game events</b>, scored against the <b>official play-by-play</b></li>
+  <li><small>Why</small>Is it good and cheap enough for <b>auto-clipping, live app updates, archive tagging</b>?</li>
+ </ul>
  <div class="tiles">
   <div class="tile"><b id="t1">–</b><span>of scorebug answers correct (score, clock, down, possession&hellip;)</span></div>
   <div class="tile"><b id="t2">–</b><span>game events detected, with <span id="t2b">–</span> false alarms</span></div>
   <div class="tile"><b id="t3">–</b><span>per hour of broadcast, at one frame every 5 s</span></div>
   <div class="tile"><b id="t4">–</b><span>per frame to get all 24 answers</span></div>
  </div>
+ <div class="callout"><h3>Heads-up: the event banners run late</h3>
+  <ul class="pts warn">
+   <li>Clef sees <span class="hl warn">1 frame every 5 s</span>, and the scorebug itself updates a few seconds after the play, so banners trail the action by <b>5&ndash;10 s</b>.</li>
+   <li>At <span class="hl ok">1 frame per second</span> they would land almost on the play, for about <b>5&times; the cost</b> (around $6 per broadcast hour instead of $1.20).</li>
+   <li>This is the <b>cheap demo</b>: the sampling rate is the only thing holding the timing back.</li>
+  </ul></div>
  <div id="err"></div>
 </header>
 
@@ -229,23 +254,23 @@ footer{color:var(--dim);font-size:12px;padding:26px 0 30px;border-top:1px solid 
 
 <section id="events">
  <h2>Events: what it caught</h2>
- <p class="sub">Events are detected from changes in Clef's answers alone, such as the Jets' score going from 32 to 38. Click a row to see the moment.</p>
+ <p class="sub">Detected only from changes in Clef's answers (e.g. Jets score <b>32 &rarr; 38</b>). Click a row to jump there.</p>
  <div class="two">
   <div class="card"><table id="evt"><thead><tr><th>Game clock</th><th>Event</th><th>Result</th><th>Timing</th></tr></thead><tbody></tbody></table></div>
   <div class="card">
    <div class="big3" id="evsum"></div>
-   <h3>What this means</h3>
-   <ul>
-    <li><b>Every score was caught:</b> all 4 touchdowns, both extra points and both two-point conversions, on the frame the scorebug changed.</li>
-    <li><b>The story of the comeback is there:</b> the tie at 2:00, the lead change at 1:54, and the turnover on downs that sealed it.</li>
-    <li><b>The overturned two-point call</b> at 7:52 was read correctly: review shown, then the score moving to 32.</li>
-    <li><b>No false alarms.</b> Nothing was reported that did not happen.</li>
+   <h3>Caught</h3>
+   <ul class="pts ok">
+    <li><span class="hl ok">Every score</span>: 4 touchdowns, 2 extra points, 2 two-point conversions</li>
+    <li><b>The comeback</b>: tie at 2:00 &rarr; lead change at 1:54 &rarr; turnover on downs</li>
+    <li><b>Overturned two-point call</b> at 7:52, read correctly</li>
+    <li><span class="hl ok">0 false alarms</span></li>
    </ul>
-   <h3 style="margin-top:12px">The 3 misses</h3>
-   <ul>
-    <li><b>Review at 10:24:</b> on screen for one frame; the detector waits for two. With a one-frame setting it is caught (15 of 17, still no false alarms).</li>
-    <li><b>Bengals timeout:</b> Clef is unsure counting the small timeout dashes.</li>
-    <li><b>Game end:</b> our rule looked for a kneel-down, which Clef never called.</li>
+   <h3 style="margin-top:12px">Missed</h3>
+   <ul class="pts bad">
+    <li><b>Review at 10:24</b>: on screen for 1 frame, the detector needs 2</li>
+    <li><b>Bengals timeout</b>: the timeout dashes are tiny</li>
+    <li><b>Game end</b>: the rule waited for a kneel-down</li>
    </ul>
   </div>
  </div>
@@ -253,22 +278,22 @@ footer{color:var(--dim);font-size:12px;padding:26px 0 30px;border-top:1px solid 
 
 <section id="results">
  <h2>How good was it</h2>
- <p class="sub">Accuracy per question. The white tick is the score you would get by always giving the most common answer; a question only "works" if the bar is clearly past it.</p>
+ <p class="sub">Accuracy per question. <b>White tick</b> = always giving the commonest answer; a question only works if the bar is clearly past it.</p>
  <div class="two">
   <div class="card"><div id="bars"></div>
    <p class="note"><span style="color:var(--gB)">&#9632;</span> scorebug &nbsp; <span style="color:var(--gA)">&#9632;</span> layout &nbsp;
     <span style="color:var(--gC)">&#9632;</span> scene * &nbsp; <span style="color:var(--gD)">&#9632;</span> editorial * &nbsp;&middot;&nbsp; faded bars are soft-label questions &nbsp;&middot;&nbsp; red number = below the always-guess line</p></div>
   <div>
    <div class="card" style="margin-bottom:14px"><h3>The short version</h3>
-    <ul>
-     <li><b>Reading what is printed on screen is essentially solved.</b> Both scores, the clock, the down and the scorebug message were right on every frame where the scorebug was visible (316 frames).</li>
-     <li><b>It reads the scorebug equally well on any shot:</b> game action, coach close-ups and sideline shots all scored 98%.</li>
-     <li><b>Judgement questions are much weaker.</b> Highlight-worthy, safe-for-an-ad-break, replay and yards-to-goal barely beat, or fall below, the always-guess line.</li>
-     <li><b>Two scorebug weak spots:</b> counting the Bengals' timeouts (85%), and possession when the Jets have the ball (11 misses).</li>
+    <ul class="pts dot">
+     <li>Reading the scorebug: <span class="hl ok">solved</span>. Scores, clock, down, message right on all 316 frames</li>
+     <li>On any shot: <span class="hl ok">98%</span> for game action, close-ups and sideline alike</li>
+     <li>Judgement calls: <span class="hl bad">weak</span>. Highlight, ad-break, replay are close to guessing</li>
+     <li>Weak spots: <span class="hl warn">Bengals timeouts 85%</span>, Jets possession (11 misses)</li>
     </ul></div>
    <div class="card"><h3>It knows when it is unsure</h3>
     <table id="cal"><thead><tr><th>Clef's stated confidence</th><th>Answers</th><th>Actually correct</th></tr></thead><tbody></tbody></table>
-    <p class="note">Over half of all answers come with 90%+ confidence, and those are right 99% of the time. Low-confidence answers can simply be ignored, which is what the event detector does.</p></div>
+    <p class="note"><span class="hl ok">90%+ sure &rarr; 99% right</span>, and that is over half of all answers. The event detector ignores the unsure ones.</p></div>
   </div>
  </div>
 </section>
@@ -276,36 +301,32 @@ footer{color:var(--dim);font-size:12px;padding:26px 0 30px;border-top:1px solid 
 <section id="how">
  <h2>How it was done</h2>
  <div class="steps">
-  <div><b>Frames.</b> 408 stills, one every 5 s, covering the whole 4th quarter (about 34 minutes of video).</div>
-  <div><b>Questions.</b> 24 fixed multiple-choice questions, plus a short description of where the scorebug is and what to ignore.</div>
-  <div><b>Clef.</b> Each frame goes in with a zoomed crop of the scorebug. Clef returns a probability for every option, in about 2 seconds.</div>
-  <div><b>Truth.</b> Scorebug labels read from every frame and cross-checked against the official play-by-play. Other labels drafted by AI and spot-checked.</div>
-  <div><b>Events.</b> An answer must be 60%+ confident and hold for 2 frames before it counts. Recorded once; this page only replays files.</div>
+  <div><b>Frames</b><br>408 stills, 1 every 5 s, the whole 4th quarter</div>
+  <div><b>Questions</b><br>24 fixed multiple-choice, plus where the scorebug is</div>
+  <div><b>Clef</b><br>Frame + zoomed scorebug crop &rarr; a probability per option, ~2 s</div>
+  <div><b>Truth</b><br>Scorebug labels checked against the play-by-play</div>
+  <div><b>Events</b><br>60%+ sure, held for 2 frames. Recorded once, replayed here</div>
  </div>
 
  <div class="cols3" style="margin-top:14px">
   <div class="card warn"><h3>Caveats</h3>
-   <ul>
-    <li><b>We made it easy.</b> We told Clef exactly where the scorebug is, what each part means and what to ignore, and gave it a zoomed crop. A different network's graphics would need a new description.</li>
-    <li><b>One quarter, one game, one broadcast.</b> Some answers barely vary here (quarter, Jets timeouts), so their scores prove little.</li>
-    <li><b>The labels were read by one AI reader</b> from the same frames. The play-by-play agrees on all but 12 frames, but nobody independently re-labelled.</li>
-    <li><b>Stills, not video.</b> Anything that needs motion or the previous few seconds is out of reach.</li>
-    <li><b>Event timing is measured against the scorebug,</b> not the live play. The scorebug itself updates some seconds after the play.</li>
+   <ul class="pts warn">
+    <li><b>We made it easy</b>: told Clef where the scorebug is, gave it a zoomed crop</li>
+    <li><b>One quarter, one game, one network</b></li>
+    <li><b>One AI labeller</b>, cross-checked with the play-by-play</li>
+    <li><b>Stills only</b>: no motion, no memory of the last frame</li>
    </ul></div>
   <div class="card star"><h3>The asterisks *</h3>
-   <ul>
-    <li>Nine questions carry <b>soft labels</b>: replay, play phase, yard markers, yards to goal, celebration, highlight-worthy, ad-break safe and the two sponsor questions.</li>
-    <li>Their labels are <b>one reader's judgement from a small still</b>, only spot-checked, and known to contain mistakes.</li>
-    <li><b>Sponsor labels are the weakest.</b> Small logos, such as a headset brand, were missed in the labels, so Clef looks worse here than it probably is.</li>
-    <li>These numbers are <b>indicative only</b> and are kept out of the headline 98%.</li>
+   <ul class="pts dot">
+    <li><b>9 judgement questions</b> have soft labels: one reader's call, spot-checked</li>
+    <li><b>Sponsor labels</b> missed small logos, so Clef looks worse than it is</li>
+    <li>Kept <span class="hl warn">out of the headline 98%</span></li>
    </ul></div>
-  <div class="card avoid"><h3>What we left out</h3>
-   <ul>
-    <li><b>Clef only ever saw stills.</b> One frame every 5 s; none are stored in the repo.</li>
-    <li><b>No YouTube player.</b> The video above streams from a copy of the 4th quarter hosted for this demo with permission, so the answers can be drawn on it.</li>
-    <li><b>Questions a still cannot answer were dropped:</b> referee signals, and "has the whistle blown".</li>
-    <li><b>Not attempted:</b> the game clock to the second, player identification, or the play type (run or pass).</li>
-    <li><b>The smaller, cheaper Clef-Flash model</b> has not been run on this footage.</li>
+  <div class="card avoid"><h3>Left out</h3>
+   <ul class="pts bad">
+    <li>Referee signals, "has the whistle blown"</li>
+    <li>Exact game clock, player names, run vs pass</li>
+    <li>The cheaper Clef-Flash model</li>
    </ul></div>
  </div>
 </section>
@@ -313,11 +334,12 @@ footer{color:var(--dim);font-size:12px;padding:26px 0 30px;border-top:1px solid 
 <section id="next">
  <h2>What comes next</h2>
  <div class="card next">
-  <ul>
-   <li><b>Add the commentary.</b> Give Clef the last 10 seconds of captions with each frame. The scorebug questions are already near-perfect, so the value is in <b>new questions the picture alone cannot answer</b>: what kind of play it was, who was involved, why a flag was thrown.</li>
-   <li><b>Make it harder.</b> Fewer hints about the layout, a different broadcast or network, and a full game, to see how much of the 98% survives.</li>
-   <li><b>Fix the known gaps cheaply:</b> read "TIMEOUT" and "FINAL" from the scorebug message, and react to a single frame for reviews.</li>
-   <li><b>Get the judgement labels reviewed by a person</b> before quoting any highlight, ad-break or sponsor figure to a client.</li>
+  <ul class="pts ok">
+   <li><span class="hl ok">1 frame per second</span> around the action, so events land on the play (~5&times; the cost)</li>
+   <li><b>Add the commentary</b>: captions with each frame, for play type, players, why a flag was thrown</li>
+   <li><b>Make it harder</b>: fewer hints, another network, a full game</li>
+   <li><b>Cheap fixes</b>: read "TIMEOUT" and "FINAL", react to 1-frame reviews</li>
+   <li><b>Human review</b> of the judgement labels before quoting them to a client</li>
   </ul>
  </div>
 </section>
