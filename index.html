@@ -64,6 +64,11 @@ button:hover,.chip:hover{border-color:var(--acc)}
 #o-read.on{opacity:1}
 #o-read .rl{color:var(--acc);font-weight:700}
 #o-tags{left:1.6%;top:17%;display:flex;flex-direction:column;align-items:flex-start}
+/* faded list of every detected event, under the tags; the current one is lit */
+#o-evl{margin-top:.5em;font-size:.8em;max-width:23em}
+.evi{background:rgba(8,11,16,.6);border-left:.22em solid var(--dim);border-radius:.25em;padding:.08em .6em;margin-bottom:.12em;opacity:.45;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:opacity .4s}
+.evi.next{opacity:.7;border-left-color:var(--acc)} .evi.now{opacity:1;background:rgba(8,11,16,.86);border-left-color:var(--ok)}
+.evi i{font-style:normal;color:var(--mut);margin-right:.5em}
 .otag{background:rgba(8,11,16,.82);border-left:.22em solid var(--acc);border-radius:.3em;padding:.2em .65em;font-size:1.3em;margin-bottom:.3em;max-height:4em;overflow:hidden;transition:opacity .6s,border-color .3s,max-height 0s,padding 0s,margin 0s}
 /* a hidden tag fades, then collapses so the tags below move up */
 .otag.gone{opacity:0;max-height:0;padding-top:0;padding-bottom:0;margin:0;transition:opacity .6s,max-height 0s .6s,padding 0s .6s,margin 0s .6s}
@@ -197,7 +202,7 @@ footer{color:var(--dim);font-size:12px;padding:26px 0 30px;border-top:1px solid 
    <button id="play">&#9654; Play</button><span id="clock">0:00 / 0:00</span>
    <div id="seek"><div class="fill"></div><div class="head"></div></div>
    <select id="rate" title="Playback speed"><option value="1">1x</option><option value="2">2x</option><option value="4">4x</option></select>
-   <button id="bmute">Sound on</button><button id="bov" class="on" title="O">Overlay</button>
+   <button id="bnext" title="N">Next event &#9654;&#9654;</button><button id="bmute">Sound on</button><button id="bov" class="on" title="O">Overlay</button>
    <button id="btr" title="T">Check vs truth</button><button id="bfs" title="F">&#x26F6; Fullscreen</button>
   </div>
   <div id="info">
@@ -206,7 +211,7 @@ footer{color:var(--dim);font-size:12px;padding:26px 0 30px;border-top:1px solid 
    <div id="notes"></div>
    <div id="grey"></div>
    <div id="rnote"></div>
-   <div id="keys"><kbd>Space</kbd> play &middot; <kbd>F</kbd> fullscreen &middot; <kbd>T</kbd> check vs truth &middot; <kbd>O</kbd> overlay &middot; <kbd>I</kbd> this strip &middot;
+   <div id="keys"><kbd>Space</kbd> play &middot; <kbd>F</kbd> fullscreen &middot; <kbd>T</kbd> check vs truth &middot; <kbd>O</kbd> overlay &middot; <kbd>N</kbd> next event &middot; <kbd>I</kbd> this strip &middot;
     <kbd>&larr;</kbd><kbd>&rarr;</kbd> &plusmn;5 s in fullscreen &middot; Footage &copy; NFL (Jets at Bengals, 26 Oct 2025), used with permission for internal demonstration only.</div>
   </div>
  </div>
@@ -393,12 +398,15 @@ function frameAt(x) { let i = -1; while (i + 1 < F.length && S[i + 1] <= x) i++;
 const ytIndex = t => { let b = 0; F.forEach((f, k) => { if (Math.abs(f.t - t) < Math.abs(F[b].t - t)) b = k; }); return b; };
 const ytToFile = t => { const f = F[ytIndex(t)]; return t - (f.t - f.v); };
 
+let EVL = [];
 function buildOverlay() {
+  EVL = EVG.filter(g => g.evs.some(e => !MINOR.has(e.event)));
   $('ov').innerHTML = `<div class="ob" id="o-bug" style="${box(BOX.bug)}"></div>
     ${Object.keys(FIGS).map(k => `<div class="ofig${BADGE.has(k) ? ' badge' : ''}" id="o-${k}" style="${box(BOX[k])}"><i>&#10003;</i></div>`).join('')}
     <div class="ob" id="o-ban" style="${box(BOX.banner)}"><span id="o-banlab"></span></div>
     <div id="o-read" style="left:${(BOX.bug[0] + BOX.bug[2] / 2) / SRC_W * 100}%;top:${(BOX.bug[1] + BOX.bug[3] + 4) / SRC_H * 100}%"></div>
-    <div id="o-tags"><div class="otag" id="tg-view"></div><div class="otag" id="tg-nobug"></div><div class="otag" id="tg-rep"></div><div class="otag" id="tg-info"></div></div>
+    <div id="o-tags"><div class="otag" id="tg-view"></div><div class="otag" id="tg-nobug"></div><div class="otag" id="tg-rep"></div><div class="otag" id="tg-info"></div>
+      <div id="o-evl">${EVL.map((g, k) => `<div class="evi" id="evi-${k}"><i>${mmss(g.at)}</i>${g.evs.filter(e => !MINOR.has(e.event)).map(evName).join(' · ')}</div>`).join('')}</div></div>
     <div class="oev" id="o-ev"><b></b><small></small></div><div class="oev" id="o-miss"><b></b><small></small></div>
     <div id="o-box"><div class="bh">Clef on the field</div>${BOXQ.map(([q, name]) => `<div class="row" id="sr-${q}"><span class="k">${name}</span><span class="v"></span><span class="sb"></span></div>`).join('')}</div>
     <div id="o-wait">Clef has not answered a frame yet</div>`;
@@ -491,6 +499,8 @@ function timed(x, i) {
       (recent.hit ? ' · ✓ real event' : '');
   }
   setCls(ev, 'oev', [recent && 'on', recent && recent.hit && 'ok']);
+  const now = EVL.filter(g => g.at <= x).length - 1;
+  EVL.forEach((g, k) => { const el = $('evi-' + k); if (el) el.className = 'evi' + (k === now ? ' now' : k === now + 1 ? ' next' : ''); });
   if (miss) { $('o-miss').querySelector('b').textContent = 'Missed: ' + evName(miss.e); $('o-miss').querySelector('small').textContent = 'Clef did not report this event'; }
   setCls($('o-miss'), 'oev', [miss && 'on']);
   $('msg').innerHTML = i < 0 ? '<b>Clef &#9656;</b> waiting for its first answer.' : '<b>Clef &#9656;</b> ' + (recent ? sayEvents(recent) : sayState(i));
@@ -529,6 +539,7 @@ const toggleOverlay = () => $('bov').classList.toggle('on', !$('stage').classLis
 const seekFile = x => { vid.currentTime = Math.max(0, Math.min(dur || 1e9, x)); };
 const seekYT = (t, scroll) => { seekFile(ytToFile(t) - 4); if (scroll) $('watch').scrollIntoView(); };
 
+function nextEvent() { const g = EVL.find(g => g.at > vid.currentTime + 0.5); if (g) seekFile(g.at + 0.05); }
 function markers() {
   const at = x => `left:${x / dur * 100}%`;
   $('seek').querySelectorAll('.sm').forEach(m => m.remove());
@@ -570,7 +581,7 @@ function setupWatch() {
   vid.addEventListener('pause', () => $('play').innerHTML = '&#9654; Play');
   vid.addEventListener('click', togglePlay);
   vid.addEventListener('dblclick', toggleFS);
-  $('play').onclick = togglePlay; $('bfs').onclick = toggleFS; $('btr').onclick = toggleTruth; $('bov').onclick = toggleOverlay;
+  $('bnext').onclick = nextEvent; $('play').onclick = togglePlay; $('bfs').onclick = toggleFS; $('btr').onclick = toggleTruth; $('bov').onclick = toggleOverlay;
   $('bmute').onclick = () => { vid.muted = !vid.muted; $('bmute').textContent = vid.muted ? 'Sound off' : 'Sound on'; };
   $('rate').onchange = () => vid.playbackRate = +$('rate').value;
   let drag = false; const seekAt = e => { const r = $('seek').getBoundingClientRect(); seekFile((e.clientX - r.left) / r.width * dur); };
@@ -582,7 +593,7 @@ function setupWatch() {
     const k = e.key.toLowerCase();
     if (k === ' ' || k === 'k') { e.preventDefault(); togglePlay(); }
     else if (k === 'f') toggleFS(); else if (k === 'o') toggleOverlay(); else if (k === 't') toggleTruth();
-    else if (k === 'i') $('stage').classList.toggle('noinfo');
+    else if (k === 'n') nextEvent(); else if (k === 'i') $('stage').classList.toggle('noinfo');
     else if (fsEl() && (k === 'arrowleft' || k === 'arrowright')) { e.preventDefault(); seekFile(vid.currentTime + (k === 'arrowright' ? 5 : -5)); }
   });
   const JUMP = [['Jets TD', 5202], ['2-pt try', 5227], ['Bengals TD', 5602], ['Jets TD #2', 5937], ['Under review', 6062], ['Call overturned', 6117],

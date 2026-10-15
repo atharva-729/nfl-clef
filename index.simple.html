@@ -1,0 +1,572 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Can a model watch an NFL game? · Clef NFL Probe</title>
+<meta name="description" content="We asked a vision model 24 questions about a frame every 5 seconds of an NFL broadcast. It reads the scorebug almost perfectly and catches the scoring story of the game.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0b0e14; --ink2:#131822; --ink3:#1e2531; --rule:#2c3544;
+  --paper:#efe9dc; --paper-ink:#17150f;
+  --fg:#ece7dc; --soft:#cfc9bd; --mut:#8e98a8;
+  --ok:#2fd3a7; --ok-ink:#04261d; --ok-bg:rgba(47,211,167,.1);
+  --bad:#ff5a4d; --bad-ink:#2b0805; --bad-bg:rgba(255,90,77,.15);
+  --warn:#f6b93b; --warn-ink:#2a1c00;
+  --flame:#ff8a2a; --sky:#5aa9ff;
+  --serif:"Fraunces",Georgia,serif; --sans:"IBM Plex Sans",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--ink);color:var(--fg);font:15px/1.55 var(--sans);-webkit-font-smoothing:antialiased}
+a{color:inherit}
+video{max-width:100%;display:block}
+.wrap{max-width:1240px;margin:0 auto;padding:0 24px}
+section{padding:46px 0;border-bottom:1px solid var(--rule);scroll-margin-top:0}
+section.alt{background:var(--ink2)}
+.kicker{font:500 11.5px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--mut);display:flex;gap:12px;align-items:center;margin-bottom:14px}
+.kicker b{color:var(--flame);font-weight:600}
+.kicker::after{content:"";flex:1;height:1px;background:currentColor;opacity:.3}
+h1,h2,h3{font-family:var(--serif);font-weight:600;line-height:1.12;letter-spacing:-.012em;margin:0}
+h1{font-size:clamp(1.8rem,3.5vw,2.75rem);max-width:24ch}
+h2{font-size:clamp(1.35rem,2.3vw,1.8rem);margin-bottom:10px}
+h3{font-size:1.08rem;line-height:1.2;margin-bottom:6px}
+p{margin:0 0 .9em}
+.sub{color:var(--soft);max-width:78ch;margin-bottom:0}
+.c-ok{color:var(--ok)} .c-bad{color:var(--bad)} .c-warn{color:var(--warn)} .c-flame{color:var(--flame)} .c-mut{color:var(--mut)}
+.tag{display:inline-block;font:600 10.5px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;padding:5px 7px;border-radius:2px;white-space:nowrap}
+.tag.ok{background:var(--ok);color:var(--ok-ink)} .tag.bad{background:var(--bad);color:var(--bad-ink)} .tag.warn{background:var(--warn);color:var(--warn-ink)}
+.sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+
+/* aim */
+#aim{padding:26px 0 40px}
+#aim .top{display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px 24px;font:500 11.5px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--mut);margin-bottom:38px}
+#aim nav{display:flex;flex-wrap:wrap;gap:6px 16px} #aim nav a{text-decoration:none} #aim nav a:hover{color:var(--fg)}
+#aim nav i{font-style:normal;opacity:.4}
+.aimgrid{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:44px;align-items:start}
+.aims{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.aims li{display:grid;grid-template-columns:86px 1fr;gap:14px;padding:11px 14px;border-left:3px solid var(--rule);background:var(--ink2);color:var(--soft)}
+.aims li b{font:600 11px/1.9 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--mut)}
+.aims li strong{color:var(--fg);font-weight:600}
+.aims li.main{border-left-color:var(--flame);background:rgba(255,138,42,.13);color:var(--fg);font-size:1.07rem;line-height:1.45}
+.aims li.main b{color:var(--flame)}
+.answer{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:22px}
+.answer div{padding:11px 14px;font-weight:600} .answer small{display:block;font:500 10.5px var(--mono);letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px;opacity:.8}
+.answer .y{background:var(--ok);color:var(--ok-ink)} .answer .n{background:var(--warn);color:var(--warn-ink)}
+
+/* clip */
+.keyline{display:flex;flex-wrap:wrap;gap:6px 18px;font:12px var(--mono);color:var(--mut);margin-top:12px}
+#stage{background:var(--ink);border:1px solid var(--rule);border-radius:2px;margin-top:18px;max-width:min(100%,calc((100vh - 150px) * 16 / 9 + 2px))}
+#vbox{position:relative;container-type:inline-size;cursor:pointer;background:#000;aspect-ratio:16/9}
+#vid{position:absolute;inset:0;width:100%;height:100%}
+#vmsg{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font:12px var(--mono);color:var(--mut);text-align:center;pointer-events:none;max-width:80%}
+.ctl{display:flex;align-items:center;gap:8px;padding:8px 10px;border-top:1px solid var(--rule);flex-wrap:wrap}
+.ctl button,.ctl select{font:600 11.5px var(--mono);background:var(--ink3);color:var(--fg);border:1px solid var(--rule);border-radius:2px;padding:5px 9px;cursor:pointer;white-space:nowrap}
+.ctl button:hover,.ctl select:hover{border-color:var(--mut)} .ctl button[aria-pressed=true]{background:var(--fg);color:var(--ink)}
+#bplay{background:var(--flame);color:#241000;border-color:var(--flame);min-width:78px}
+.ctl .tm{font:12px var(--mono);color:var(--soft);white-space:nowrap;min-width:92px}
+#seek{flex:1 1 160px;position:relative;height:22px;background:var(--ink3);border:1px solid var(--rule);border-radius:2px;cursor:pointer;touch-action:none}
+#seek .fill{position:absolute;left:0;top:0;bottom:0;background:rgba(255,138,42,.18);pointer-events:none}
+#seek .head{position:absolute;top:-3px;bottom:-3px;width:2px;margin-left:-1px;background:#fff;pointer-events:none;z-index:2}
+.sm{position:absolute;top:4px;bottom:4px;width:5px;margin-left:-2px;border-radius:1px;background:var(--flame);pointer-events:none}
+.sm.minor{background:var(--mut);top:8px;bottom:8px;width:3px}
+.info{padding:10px 12px 12px;border-top:1px solid var(--rule);display:grid;gap:6px}
+#stage.bare .info{display:none}
+#msg{font-size:1rem;font-weight:600;min-height:24px} #msg b{color:var(--flame);font-family:var(--mono);font-size:.82em;letter-spacing:.06em;margin-right:4px}
+#ed{display:flex;gap:4px 20px;flex-wrap:wrap;font-size:.88rem;color:var(--soft)}
+#ed b{color:var(--fg);font-weight:600}
+.vnote{font:11px/1.5 var(--mono);color:var(--mut)}
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:14px;max-width:min(100%,calc((100vh - 150px) * 16 / 9 + 2px))}
+.chips .lbl{font:11.5px var(--mono);color:var(--mut);align-self:center;margin-right:4px}
+.chip{font:11.5px var(--mono);background:none;color:var(--mut);border:1px solid var(--rule);border-left:3px solid var(--flame);padding:5px 8px;cursor:pointer;border-radius:2px}
+.chip:hover{color:var(--ink);background:var(--flame);border-color:var(--flame)}
+#stage:fullscreen{display:flex;flex-direction:column;justify-content:center;width:100vw;height:100vh;max-width:none;margin:0;border:0;border-radius:0;background:#000}
+#stage:fullscreen #vbox{width:min(100vw,calc((100vh - 120px) * 16 / 9));margin:0 auto}
+
+/* overlay: positioned in the clip's own 1920x1080 pixels (as percentages), sized in em so it scales with the video */
+#ov{position:absolute;inset:0;pointer-events:none;color:#fff;font:500 clamp(9px,1.2cqw,23px)/1.3 var(--mono);transition:opacity .3s}
+#vbox.off #ov{opacity:0}
+#ov>*{position:absolute;transition:opacity .6s}
+#ov.nof>:not(#o-wait){opacity:0!important}
+#ov:not(.nof) #o-wait{display:none}
+#o-wait{left:50%;top:50%;transform:translate(-50%,-50%);background:rgba(8,11,16,.8);padding:.3em .8em;color:var(--soft)}
+#o-bug{border:max(1.5px,.15em) solid var(--flame);border-radius:2px;opacity:0}
+#o-bug.on{opacity:1}
+#o-banlab{position:absolute;bottom:100%;left:-.15em;margin-bottom:.25em;background:var(--flame);color:#0b0e14;font-weight:600;font-size:.85em;padding:.1em .5em;white-space:nowrap}
+#o-ban{border:max(1.5px,.15em) solid var(--flame);border-radius:2px;opacity:0}
+#o-ban.on{opacity:1}
+#o-read{transform:translateX(-50%);white-space:nowrap;background:rgba(8,11,16,.86);border-left:.28em solid var(--flame);padding:.28em .8em;display:flex;gap:1em;align-items:baseline;opacity:0}
+#o-read.on{opacity:1}
+#o-read .rl{color:var(--flame);font-weight:600;text-transform:uppercase;letter-spacing:.08em;font-size:.85em}
+#o-read .low{color:var(--warn)}
+#o-tags{left:1.2%;top:2.2%;display:flex;flex-direction:column;align-items:flex-start;gap:.35em}
+.otag{background:rgba(8,11,16,.84);border-left:.28em solid var(--sky);padding:.28em .7em;white-space:nowrap;max-height:3em;overflow:hidden;transition:opacity .6s,max-height 0s,padding 0s}
+.otag.gone{opacity:0;max-height:0;padding-top:0;padding-bottom:0;transition:opacity .6s,max-height 0s .6s,padding 0s .6s}
+.otag.low{border-left-color:var(--warn)}
+#tg-view{font-size:1.2em;font-weight:600}
+.otag i{font-style:normal;color:var(--mut);margin-left:.5em;font-size:.85em}
+.otag.low i{color:var(--warn)}
+#o-ev{left:50%;top:4%;transform:translateX(-50%);background:rgba(8,11,16,.9);border:max(1.5px,.14em) solid var(--flame);padding:.4em 1.2em;text-align:center;white-space:nowrap;opacity:0}
+#o-ev.on{opacity:1}
+#o-ev b{display:block;font:600 1.6em/1.2 var(--serif);letter-spacing:.02em}
+#o-ev small{display:block;color:var(--soft);font-size:.85em;margin-top:.15em}
+
+/* events */
+.evgrid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:22px;margin-top:22px;align-items:start}
+.evtab{background:var(--ink);border:1px solid var(--rule)}
+.evrow{display:grid;grid-template-columns:62px minmax(0,1fr) 78px 84px;gap:10px;align-items:center;padding:8px 14px;border-top:1px solid var(--rule);border-left:3px solid var(--ok);cursor:pointer;font-size:.93rem}
+.evrow:first-child{border-top:0}
+.evrow:hover{background:var(--ink3)}
+.evrow.miss{border-left-color:var(--bad);background:var(--bad-bg)}
+.evrow .gc{font:500 12px var(--mono);color:var(--mut)}
+.evrow .tm{font:12px var(--mono);color:var(--mut);text-align:right}
+.evhead{display:grid;grid-template-columns:62px minmax(0,1fr) 78px 84px;gap:10px;padding:7px 14px 7px 17px;font:600 10.5px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--mut);border-bottom:1px solid var(--rule);background:var(--ink2)}
+.evhead span:last-child{text-align:right}
+.takes{display:grid;gap:8px}
+.take{display:grid;grid-template-columns:104px 1fr;gap:14px;align-items:center;padding:12px 14px;background:var(--ink);border-left:3px solid var(--c)}
+section.alt .take{background:var(--ink)}
+.take .n{font:600 1.65rem/1 var(--serif);color:var(--c);letter-spacing:-.02em}
+.take b{display:block} .take span{color:var(--soft);font-size:.93rem}
+.oneline{margin:16px 0 0;padding:11px 14px;border-left:3px solid var(--c,var(--rule));background:var(--ink);color:var(--soft)}
+.oneline b{color:var(--fg)}
+
+/* results */
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:20px}
+.tile{padding:14px 16px 16px;border-radius:2px;color:var(--t-ink);background:var(--t)}
+.tile.ok{--t:var(--ok);--t-ink:var(--ok-ink)} .tile.warn{--t:var(--warn);--t-ink:var(--warn-ink)} .tile.flame{--t:var(--flame);--t-ink:#241000}
+.tile .g{display:flex;justify-content:space-between;font:600 11px var(--mono);letter-spacing:.1em;text-transform:uppercase}
+.tile .n{font:600 2.7rem/1 var(--serif);letter-spacing:-.03em;margin:10px 0 4px}
+.tile b{display:block;font-size:1rem} .tile p{margin:3px 0 0;font-size:.9rem;line-height:1.4}
+.bottom{margin-top:18px;padding:14px 18px;background:var(--paper);color:var(--paper-ink);font-size:1.02rem}
+.bottom b{font-family:var(--serif);font-size:1.1rem}
+.results2{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:18px}
+
+/* divider */
+#more{padding:26px 0;background:var(--paper);color:var(--paper-ink);border-bottom:0}
+#more .wrap{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px 24px}
+#more b{font:600 1.25rem var(--serif)} #more span{font:500 11.5px var(--mono);letter-spacing:.1em;text-transform:uppercase;opacity:.75}
+
+/* the rest */
+.steps{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:18px;counter-reset:s}
+.steps div{background:var(--ink2);border:1px solid var(--rule);padding:12px 14px;border-radius:2px;color:var(--soft);font-size:.93rem}
+.steps div::before{counter-increment:s;content:counter(s,decimal-leading-zero);display:block;font:600 11.5px var(--mono);color:var(--flame);margin-bottom:4px}
+.steps b{color:var(--fg);display:block}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:18px}
+.card{background:var(--ink);border:1px solid var(--rule);border-top:3px solid var(--c);padding:14px 16px;border-radius:2px}
+.card p{margin:0;color:var(--soft);font-size:.93rem}
+.nextstep{display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:center;margin-top:18px;padding:16px 18px;background:var(--flame);color:#241000}
+.nextstep b{font:600 1.25rem/1.25 var(--serif)} .nextstep .tag{background:#241000;color:var(--flame)}
+.subhead{font:600 11.5px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--mut);margin:34px 0 6px}
+.uses{display:grid;margin-top:12px;border-top:1px solid var(--rule)}
+.uses div{display:grid;grid-template-columns:200px 124px 1fr;gap:16px;padding:11px 0;border-bottom:1px solid var(--rule);align-items:start}
+.uses b{font:600 1rem var(--serif)} .uses p{margin:0;font-size:.93rem;color:var(--soft)}
+footer{padding:34px 0 60px;color:var(--mut);font-size:.85rem}
+footer b{color:var(--fg)}
+#err{color:var(--bad);font:12px var(--mono);margin-top:14px}
+
+@media(max-width:980px){
+  section{padding:36px 0}
+  .aimgrid,.evgrid{grid-template-columns:1fr;gap:18px}
+  .tiles{grid-template-columns:1fr 1fr}
+  .steps,.cards{grid-template-columns:1fr 1fr}
+  .uses div{grid-template-columns:1fr;gap:6px}
+}
+@media(max-width:560px){
+  .wrap{padding:0 16px}
+  .aims li{grid-template-columns:1fr;gap:0}
+  .answer,.tiles,.steps,.cards{grid-template-columns:1fr}
+  .nextstep{grid-template-columns:1fr;gap:8px}
+  .evrow,.evhead{grid-template-columns:50px minmax(0,1fr) 70px}
+  .evrow .tm,.evhead span:last-child{display:none}
+  .take{grid-template-columns:1fr;gap:4px}
+}
+</style>
+</head>
+<body>
+
+<header id="aim">
+ <div class="wrap">
+  <div class="top">
+   <span>Clef NFL Probe · Internal · Oct 2026</span>
+   <nav><a href="#watch">Clip</a><a href="#events">Events</a><a href="#results">Results</a><i>|</i><a href="#rest">The rest</a></nav>
+  </div>
+  <div class="aimgrid">
+   <div>
+    <div class="kicker"><b>The aim</b></div>
+    <h1>Can a model watch an NFL broadcast and tell us what is happening?</h1>
+    <div class="answer">
+     <div class="y"><small>Short answer: yes</small>for the scorebug and the scoring story of the game</div>
+     <div class="n"><small>Short answer: unproven</small>for judgement calls like highlights and ad breaks</div>
+    </div>
+   </div>
+   <div>
+    <ul class="aims">
+     <li class="main"><b>Question</b><span>Given only the picture, can a model follow a football game <strong>well enough to drive auto-clipping, live app updates or archive tagging?</strong></span></li>
+     <li><b>Test</b><span>The whole 4th quarter of <strong>Jets at Bengals, Week 8, 2025</strong>: 34 minutes, one frame every 5 seconds.</span></li>
+     <li><b>Method</b><span>Cloudflare's <strong>Clef</strong> answers the same <strong>24 multiple-choice questions</strong> on every frame, with a confidence for each answer.</span></li>
+     <li><b>Check</b><span>Answers scored against labels built from the <strong>official play-by-play</strong>. When an answer changes and holds, we call it a game event.</span></li>
+    </ul>
+   </div>
+  </div>
+  <div id="err"></div>
+ </div>
+</header>
+
+<section id="watch" class="alt">
+ <div class="wrap">
+  <div class="kicker"><b>01</b> The clip and Clef's answers</div>
+  <h2>Press play. Clef's answers are drawn on the broadcast as they would arrive live.</h2>
+  <div class="keyline">
+   <span><i class="sw" style="background:var(--flame)"></i>outline: the scorebug Clef found</span>
+   <span><i class="sw" style="background:var(--sky)"></i>tag: what kind of shot Clef thinks it is</span>
+   <span><b class="c-warn">Amber</b>: Clef was under 60% sure</span>
+   <span>Each answer lands about 2 s after its frame and holds for the next 5 s</span>
+  </div>
+  <div id="stage">
+   <div id="vbox">
+    <video id="vid" playsinline preload="metadata"></video>
+    <div id="ov" class="nof" aria-hidden="true"></div>
+    <div id="vmsg">Loading&hellip;</div>
+   </div>
+   <div class="ctl">
+    <button id="bplay">&#9654; Play</button>
+    <span class="tm" id="clock">0:00 / 0:00</span>
+    <div id="seek"><div class="fill"></div><div class="head"></div></div>
+    <select id="rate" title="Playback speed"><option value="1">1x</option><option value="2">2x</option><option value="4">4x</option></select>
+    <button id="bmute">Sound on</button>
+    <button id="bov" aria-pressed="true" title="Key: O">Overlay</button>
+    <button id="bfs" title="Key: F">&#x26F6; Fullscreen</button>
+   </div>
+   <div class="info">
+    <div id="msg"></div>
+    <div id="ed"></div>
+    <div class="vnote">Replay of a recorded run: Clef sees one frame every 5 s and answers in about 2 s. Keys: space play &middot; F fullscreen &middot; O overlay &middot; I this strip. Footage &copy; NFL, used with permission for internal demonstration only.</div>
+   </div>
+  </div>
+  <div class="chips" id="chips"></div>
+ </div>
+</section>
+
+<section id="events">
+ <div class="wrap">
+  <div class="kicker"><b>02</b> Events</div>
+  <h2><span class="c-ok" id="evh">–</span> game events caught from the answers alone. <span class="c-ok">No false alarms.</span></h2>
+  <p class="sub">No event detector was trained. An event fires when one of Clef's answers changes and holds for two frames, such as the Jets' score going from 32 to 38. Click a row to see the moment.</p>
+  <div class="evgrid">
+   <div class="evtab"><div class="evhead"><span>Clock</span><span>Event</span><span>Result</span><span>Timing</span></div><div id="evrows"></div></div>
+   <div>
+    <div class="takes">
+     <div class="take" style="--c:var(--ok)"><div class="n">Every score</div><div><b>All 4 touchdowns and every conversion.</b><span>Caught on the frame the scorebug changed, including the tying and go-ahead scores.</span></div></div>
+     <div class="take" style="--c:var(--ok)"><div class="n">The call</div><div><b>The overturned two-point call was read correctly.</b><span>Review shown, then the score moving to 32.</span></div></div>
+     <div class="take" style="--c:var(--warn)"><div class="n">3 misses</div><div><b>A one-frame review, a timeout and the final whistle.</b><span>Each has a cheap fix: react to a single frame, and read "TIMEOUT" and "FINAL" from the scorebug message.</span></div></div>
+    </div>
+   </div>
+  </div>
+ </div>
+</section>
+
+<section id="results" class="alt">
+ <div class="wrap">
+  <div class="kicker"><b>03</b> How good was it</div>
+  <h2><span id="rh">98%</span> of the scorebug answers right. The judgement calls are a different story.</h2>
+  <p class="sub">The 24 questions split into reading what is printed on screen, and judging what is happening. The first works. The second is not proven.</p>
+  <div class="tiles">
+   <div class="tile ok"><div class="g"><span>Scorebug</span><span>Works</span></div><div class="n" id="t1">–</div><b>Reading the figures</b><p>Both scores, the clock, down, distance and the scorebug message.</p></div>
+   <div class="tile ok"><div class="g"><span>Layout</span><span>Works</span></div><div class="n" id="t2">–</div><b>What is on screen</b><p>Type of shot, scorebug present, replay, info graphics.</p></div>
+   <div class="tile warn"><div class="g"><span>Judgement</span><span>Unproven</span></div><div class="n" id="t3">–</div><b>Highlights, ad breaks, sponsors</b><p id="t3p">Barely better than always giving the commonest answer.</p></div>
+   <div class="tile flame"><div class="g"><span>Cost</span><span>Cheap</span></div><div class="n" id="t4">–</div><b>Per hour of broadcast</b><p id="t4p">One frame every 5 s, all 24 answers.</p></div>
+  </div>
+  <div class="results2">
+   <div class="take" style="--c:var(--ok)"><div class="n">316/316</div><div><b>It reads the screen.</b><span>Scores, clock, down and message were right on every frame where the scorebug was visible, on any shot.</span></div></div>
+   <div class="take" style="--c:var(--ok)"><div class="n" id="cf">–</div><div><b>Its confidence is usable.</b><span id="cfp">Confident answers are right almost every time. Low-confidence ones can be ignored, as the event detector does.</span></div></div>
+  </div>
+  <div class="bottom"><b>Bottom line.</b> Ready to trial for scores, game state and the scoring story of a game, on a hosted broadcast. Not ready to judge highlights, ad breaks or sponsors.</div>
+ </div>
+</section>
+
+<section id="more">
+ <div class="wrap"><b>That is the result. Everything below is the rest.</b><span>Optional reading · method, caveats, what comes next</span></div>
+</section>
+
+<section id="rest">
+ <div class="wrap">
+  <div class="kicker"><b>04</b> How it was done</div>
+  <h2>Sample, ask, check, detect, replay.</h2>
+  <div class="steps">
+   <div><b>Sample</b>408 stills, one every 5 s, covering the 4th quarter.</div>
+   <div><b>Ask</b>24 fixed multiple-choice questions, plus a note on where the scorebug is and what to ignore.</div>
+   <div><b>Check</b>Scorebug labels read from every frame and cross-checked against the official play-by-play. Other labels drafted by AI.</div>
+   <div><b>Detect</b>An answer at 60% confidence or more, held for two frames, becomes an event.</div>
+   <div><b>Replay</b>Recorded once, so this page only replays files and spends no tokens.</div>
+  </div>
+
+  <div class="subhead">Caveats</div>
+  <div class="cards">
+   <div class="card" style="--c:var(--warn)"><h3>We made it easy.</h3><p>Clef was told exactly where the scorebug is and what each part means, and got a zoomed crop. Another network's graphics need a new description.</p></div>
+   <div class="card" style="--c:var(--warn)"><h3>One quarter, one game.</h3><p>One broadcast, labels read by one AI reader and cross-checked against the play-by-play. Treat the numbers as an indication, not a benchmark.</p></div>
+   <div class="card" style="--c:var(--warn)"><h3>Judgement labels are soft.</h3><p>Replay, play phase, highlight-worthy, ad-break safe and sponsor labels are one reader's call, only spot-checked. They are kept out of the headline figure.</p></div>
+  </div>
+
+  <div class="subhead">What comes next</div>
+  <div class="nextstep"><span class="tag">Next step</span><b>Add the commentary captions to each frame, and try a different broadcast.</b></div>
+  <div class="uses">
+   <div><b>Live score and game-state updates</b><span><span class="tag ok">Looks feasible</span></span><p>Reading the scorebug is the proven strength, on this network's graphics.</p></div>
+   <div><b>Auto-clipping scores</b><span><span class="tag ok">Looks feasible</span></span><p>Every touchdown and conversion was caught on the frame the score changed.</p></div>
+   <div><b>Archive tagging</b><span><span class="tag ok">Looks feasible</span></span><p>Shot type, replays and info graphics are read well enough to chapter a game.</p></div>
+   <div><b>Highlights, ad breaks, sponsors</b><span><span class="tag warn">Needs review</span></span><p>Get a person to review the judgement labels before quoting any figure to a client.</p></div>
+  </div>
+ </div>
+</section>
+
+<footer>
+ <div class="wrap" id="foot"></div>
+</footer>
+
+<script>
+const $ = id => document.getElementById(id);
+const EV = {touchdown_jets: 'Touchdown, Jets', touchdown_bengals: 'Touchdown, Bengals', extra_point_good: 'Extra point good', two_point_good: 'Two-point conversion good',
+ tie: 'Game tied', lead_change: 'Lead change', possession_change: 'Possession change', timeout_bengals: 'Timeout, Bengals', timeout_jets: 'Timeout, Jets',
+ penalty: 'Penalty flag', replay_review: 'Replay review', game_end: 'Game end', first_down: 'First down', two_point_attempt: 'Two-point attempt',
+ field_goal_jets: 'Field goal, Jets', field_goal_bengals: 'Field goal, Bengals', conversion_no_good: 'Conversion no good'};
+const SUB = {punt: 'punt', turnover_on_downs: 'turnover on downs', upheld: 'call stands', reversed: 'call overturned'};
+const evName = e => (EV[e.event] || e.event) + (SUB[e.subtype] ? ` (${SUB[e.subtype]})` : '');
+const nice = v => String(v).replace(/_/g, ' ');
+const pct = x => Math.round(x * 100) + '%';
+const mmss = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+
+// ---- the overlay (docs/overlay.md) ----
+const SRC_W = 1920, SRC_H = 1080, HOLD_S = 10;
+const BUG = [554, 912, 812, 118], BANNER = [554, 866, 812, 44];   // x, y, w, h in source pixels
+const NO_INFO = new Set(['cant_tell', 'not_visible', 'not_shown', 'none']);
+const MINOR = new Set(['first_down', 'two_point_attempt']);
+const TEAM = {jets: 'Jets', bengals: 'Bengals'};
+const ORD = {1: '1st', 2: '2nd', 3: '3rd', 4: '4th', ot: 'OT'};
+const SAY = {touchdown_jets: 'Touchdown, Jets', touchdown_bengals: 'Touchdown, Bengals', extra_point_good: 'The extra point is good',
+  two_point_good: 'The two-point conversion is good', two_point_attempt: 'Lining up for a two-point try', tie: 'The game is tied', lead_change: 'Lead change',
+  possession_change: 'Change of possession', first_down: 'First down', timeout_jets: 'Timeout, Jets', timeout_bengals: 'Timeout, Bengals',
+  penalty: 'Flag on the play', replay_review: 'The play is under review', game_end: 'Game over', field_goal_jets: 'Field goal, Jets',
+  field_goal_bengals: 'Field goal, Bengals', conversion_no_good: 'The conversion is no good'};
+const QNAME = {jets_score: 'Jets score', bengals_score: 'Bengals score', quarter: 'Quarter', clock_minutes: 'Clock', scorebug_message: 'Scorebug message',
+  possession: 'Possession', down: 'Down', distance: 'Distance', jets_timeouts: 'Jets timeouts', bengals_timeouts: 'Bengals timeouts', review_banner: 'Review banner', replay_showing: 'Replay'};
+const FMT = {
+  main_view: {game_action: 'Game action', coach_closeup: 'Coach close-up', sideline_or_bench: 'Sideline / bench', crowd: 'Crowd',
+    booth_or_studio: 'Commentary booth', full_screen_graphic: 'Full-screen graphic', advert: 'Advert', other: 'Other shot'},
+  scorebug_message: {down_and_distance: 'down & distance', flag: 'FLAG', two_point_attempt: '2-PT ATTEMPT', under_review: 'UNDER REVIEW',
+    network_logo: 'CBS logo', other: 'other message', not_visible: 'not visible'},
+  review_banner: {review_reason: 'review reason', call_overturned: 'CALL OVERTURNED', call_stands: 'CALL STANDS', none: 'none'},
+  highlight_worthy: {yes: 'Yes', no: 'No', cant_tell: "Can't tell"}, ad_break_safe: {yes: 'Yes', no: 'No', cant_tell: "Can't tell"},
+};
+function fmt(q, v) {
+  if (FMT[q] && FMT[q][v]) return FMT[q][v];
+  if (v === 'cant_tell') return "can't tell";
+  if (v === 'not_shown' || v === 'not_visible') return 'not shown';
+  if (q === 'down' || q === 'quarter') return ORD[v] || v;
+  if (q === 'distance') return v === 'goal' ? '& goal' : '& ' + v.replace('-', '–');
+  if (q === 'possession') return TEAM[v] ? TEAM[v] + ' ball' : nice(v);
+  if (q === 'clock_minutes') return v + ':xx';
+  return nice(v).replace(/^./, c => c.toUpperCase());
+}
+const box = ([x, y, w, h]) => `left:${x / SRC_W * 100}%;top:${y / SRC_H * 100}%;width:${w / SRC_W * 100}%;height:${h / SRC_H * 100}%`;
+
+let T, M, F, S, ST, EVG, vid, cur = -2, dur = 0, lastTimed = '';
+
+// Clef's answer on frame i: the option, its confidence, whether it is under the threshold, whether it changed recently
+function A(i, q) {
+  const a = F[i].answers[q] || {a: '?', c: 0}, at = k => k >= 0 ? (F[k].answers[q] || {}).a : undefined;
+  return {q, a: a.a, c: a.c, low: a.c < M.min_conf, fresh: i < 2 || a.a !== at(i - 1) || at(i - 1) !== at(i - 2)};
+}
+const part = (r, text) => `<span${r.low ? ' class="low"' : ''}>${text}</span>`;
+
+// frame i is on screen from when Clef's answer for it arrived (S[i]) until the next one arrives
+function frameAt(x) { let i = -1; while (i + 1 < F.length && S[i + 1] <= x) i++; return i; }
+const ytIndex = t => { let b = 0; F.forEach((f, k) => { if (Math.abs(f.t - t) < Math.abs(F[b].t - t)) b = k; }); return b; };
+const ytToFile = t => { const f = F[ytIndex(t)]; return t - (f.t - f.v); };
+
+function buildOverlay() {
+  $('ov').innerHTML = `<div id="o-bug" style="${box(BUG)}"></div>
+    <div id="o-ban" style="${box(BANNER)}"><span id="o-banlab"></span></div>
+    <div id="o-read" style="left:${(BUG[0] + BUG[2] / 2) / SRC_W * 100}%;top:${(BUG[1] + BUG[3] + 4) / SRC_H * 100}%"></div>
+    <div id="o-tags"><div class="otag" id="tg-view"></div><div class="otag" id="tg-rep"></div></div>
+    <div id="o-ev"><b></b><small></small></div>
+    <div id="o-wait">Clef has not answered a frame yet</div>`;
+}
+
+function applyFrame(i) {
+  $('ov').classList.toggle('nof', i < 0);
+  $('ed').style.visibility = i < 0 ? 'hidden' : '';
+  if (i < 0) return;
+  const R = q => A(i, q);
+
+  // the shot type, always, top-left
+  const view = R('main_view');
+  $('tg-view').innerHTML = `${fmt('main_view', view.a)}<i>${pct(view.c)}</i>`;
+  $('tg-view').className = 'otag' + (view.low ? ' low' : '');
+
+  // the scorebug: outlined while Clef says it is there
+  const on = R('scorebug_visible').a === 'yes';
+  $('o-bug').className = on ? 'on' : '';
+
+  // what Clef read off the scorebug, written just under it
+  const js = R('jets_score'), bs = R('bengals_score'), msg = R('scorebug_message'), pos = R('possession');
+  const msgPart = msg.a === 'down_and_distance' ? part(R('down'), fmt('down', R('down').a)) + ' ' + part(R('distance'), fmt('distance', R('distance').a))
+    : part(msg, fmt('scorebug_message', msg.a));
+  $('o-read').innerHTML = `<span class="rl">Clef reads</span><span>JETS ${part(js, js.a)} &ndash; ${part(bs, bs.a)} BENGALS</span>
+    <span>${part(R('quarter'), fmt('quarter', R('quarter').a))} ${part(R('clock_minutes'), fmt('clock_minutes', R('clock_minutes').a))}</span>
+    <span>${msgPart}</span>${TEAM[pos.a] ? `<span>${part(pos, fmt('possession', pos.a))}</span>` : ''}`;
+  $('o-read').classList.toggle('on', on);
+
+  // review banner above the scorebug
+  const rb = R('review_banner'), rbOn = rb.a !== 'none';
+  $('o-banlab').textContent = rbOn ? `Clef: ${fmt('review_banner', rb.a)}` : '';
+  $('o-ban').className = rbOn ? 'on' : '';
+
+  // a replay is tagged when it starts and fades after a while
+  const rep = R('replay_showing');
+  $('tg-rep').textContent = 'REPLAY';
+  $('tg-rep').className = 'otag' + (rep.a === 'yes' && rep.fresh ? '' : ' gone');
+
+  // editorial calls stay off the picture
+  const hw = R('highlight_worthy'), ab = R('ad_break_safe');
+  $('ed').innerHTML = `<span>Highlight moment? <b>${part(hw, fmt('highlight_worthy', hw.a))}</b> <span class="c-mut">${pct(hw.c)}</span></span>
+    <span>Safe to cut to an ad? <b>${part(ab, fmt('ad_break_safe', ab.a))}</b> <span class="c-mut">${pct(ab.c)}</span></span>`;
+}
+
+// event banners and the message line depend on the time, not only the frame
+function timed(x, i) {
+  const recent = EVG.filter(g => g.at <= x && x < g.at + HOLD_S).pop();
+  const key = `${i}|${recent ? recent.at : ''}`;
+  if (key === lastTimed) return;
+  lastTimed = key;
+  const ev = $('o-ev');
+  if (recent) {
+    ev.querySelector('b').textContent = recent.evs.filter(e => !MINOR.has(e.event)).concat(recent.evs.filter(e => MINOR.has(e.event))).map(evName).join(' · ').toUpperCase();
+    const ev0 = recent.evs[0].evidence, v = z => z == null ? '–' : fmt(ev0.question, z);
+    ev.querySelector('small').textContent = `Clef read the scorebug: ${QNAME[ev0.question] || nice(ev0.question)} ${v(ev0.from)} → ${v(ev0.to)}`;
+  }
+  ev.className = recent ? 'on' : '';
+  $('msg').innerHTML = i < 0 ? '<b>CLEF &#9656;</b> waiting for its first answer.' : '<b>CLEF &#9656;</b>' + (recent ? sayEvents(recent) : sayState(i));
+}
+function sayEvents(g) {
+  const s = ST[g.i], parts = g.evs.map(e => SAY[e.event] + (e.event === 'possession_change' && SUB[e.subtype] ? ` (${SUB[e.subtype]})` : '')
+    + (e.event === 'first_down' && TEAM[s.possession] ? `, ${TEAM[s.possession]}` : ''));
+  const scored = g.evs.some(e => /touchdown|extra|two_point_good|field_goal|tie|lead|safety/.test(e.event));
+  return parts.join('. ') + '.' + (scored ? ` Scorebug now Jets ${s.jets_score}, Bengals ${s.bengals_score}.` : '');
+}
+function sayState(i) {
+  const s = ST[i], score = `Jets ${s.jets_score ?? '?'}, Bengals ${s.bengals_score ?? '?'}`;
+  if (A(i, 'scorebug_visible').a !== 'yes') return `No scorebug on screen (${fmt('main_view', A(i, 'main_view').a).toLowerCase()}). Last read: ${score}.`;
+  const down = s.down ? `, ${ORD[s.down]} ${fmt('distance', s.distance || 'not_shown').replace('not shown', '').trim()}` : '';
+  return `${TEAM[s.possession] ? TEAM[s.possession] + ' ball' + down + ' · ' : s.down ? down.slice(2) + ' · ' : ''}${ORD[s.quarter] || '?'} quarter, ${s.clock_minutes ?? '?'} min on the clock · ${score}.`;
+}
+
+function tick() {
+  const x = vid.currentTime, i = frameAt(x);
+  if (i !== cur) { cur = i; applyFrame(i); }
+  timed(x, i);
+  const p = dur ? Math.min(100, x / dur * 100) : 0;
+  document.querySelector('#seek .head').style.left = p + '%'; document.querySelector('#seek .fill').style.width = p + '%';
+  $('clock').textContent = `${mmss(x)} / ${mmss(dur)}`;
+  requestAnimationFrame(tick);
+}
+
+const fsEl = () => document.fullscreenElement || document.webkitFullscreenElement;
+function toggleFS() {
+  if (fsEl()) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+  else { const s = $('stage'); (s.requestFullscreen || s.webkitRequestFullscreen).call(s); }
+}
+const togglePlay = () => vid.paused ? vid.play() : vid.pause();
+const toggleOverlay = () => { const off = $('vbox').classList.toggle('off'); $('bov').setAttribute('aria-pressed', !off); };
+const seekFile = x => { vid.currentTime = Math.max(0, Math.min(dur || 1e9, x)); };
+const seekYT = (t, scroll) => { seekFile(ytToFile(t) - 4); if (scroll) $('watch').scrollIntoView(); };
+
+function markers() {
+  $('seek').querySelectorAll('.sm').forEach(m => m.remove());
+  $('seek').insertAdjacentHTML('beforeend', EVG.map(g => `<div class="sm${g.evs.every(e => MINOR.has(e.event)) ? ' minor' : ''}" style="left:${g.at / dur * 100}%" title="${g.evs.map(evName).join(', ')}"></div>`).join(''));
+}
+
+function setupWatch() {
+  F = T.frames;
+  const lat = F.map(f => f.lat).filter(Boolean).sort((a, b) => a - b), medLat = lat[lat.length >> 1] || 2;
+  F.forEach(f => { if (!f.lat) f.lat = medLat; });
+  S = F.map(f => f.v + f.lat);
+  // last confident reading of each scorebug field, for the message line
+  let s = {}; ST = F.map(f => { s = {...s}; for (const q of ['jets_score', 'bengals_score', 'possession', 'down', 'distance', 'quarter', 'clock_minutes']) {
+    const a = f.answers[q]; if (a && a.c >= M.min_conf && !NO_INFO.has(a.a)) s[q] = a.a; } return s; });
+  // events, shown when Clef's answer on the frame that confirmed them arrived; grouped when several land together
+  const groups = new Map();
+  for (const e of T.events) {
+    const i = ytIndex(e.known_t ?? e.t), g = groups.get(i) || {i, at: S[i], evs: []};
+    g.evs.push(e); groups.set(i, g);
+  }
+  EVG = [...groups.values()].sort((a, b) => a.at - b.at);
+  buildOverlay();
+
+  vid = $('vid');
+  if (!M.video_file_url) { $('vmsg').textContent = 'No video file is configured (config.yaml: video.file_url).'; return; }
+  vid.src = M.video_file_url;
+  vid.addEventListener('loadedmetadata', () => {
+    dur = vid.duration; $('vmsg').textContent = ''; markers();
+    const want = new URLSearchParams(location.hash.slice(1)); if (want.get('t')) seekYT(+want.get('t'));
+  });
+  vid.addEventListener('error', () => { $('vmsg').textContent = 'The video stream could not be loaded. Check the connection, or open it in Chrome.'; });
+  vid.addEventListener('play', () => $('bplay').innerHTML = '&#10074;&#10074; Pause');
+  vid.addEventListener('pause', () => $('bplay').innerHTML = '&#9654; Play');
+  $('vbox').addEventListener('click', togglePlay);
+  $('vbox').addEventListener('dblclick', toggleFS);
+  $('bplay').onclick = togglePlay; $('bfs').onclick = toggleFS; $('bov').onclick = toggleOverlay;
+  $('bmute').onclick = () => { vid.muted = !vid.muted; $('bmute').textContent = vid.muted ? 'Sound off' : 'Sound on'; };
+  $('rate').onchange = () => vid.playbackRate = +$('rate').value;
+  let drag = false; const seekAt = e => { const r = $('seek').getBoundingClientRect(); seekFile((e.clientX - r.left) / r.width * dur); };
+  $('seek').onpointerdown = e => { drag = true; $('seek').setPointerCapture(e.pointerId); seekAt(e); };
+  $('seek').onpointermove = e => { if (drag) seekAt(e); };
+  $('seek').onpointerup = () => drag = false;
+  addEventListener('keydown', e => {
+    if (/INPUT|SELECT|TEXTAREA/.test(e.target.tagName) || e.ctrlKey || e.metaKey || e.altKey) return;
+    const k = e.key.toLowerCase();
+    if (k === ' ' || k === 'k') { e.preventDefault(); togglePlay(); }
+    else if (k === 'f') toggleFS(); else if (k === 'o') toggleOverlay();
+    else if (k === 'i') $('stage').classList.toggle('bare');
+    else if (fsEl() && (k === 'arrowleft' || k === 'arrowright')) { e.preventDefault(); seekFile(vid.currentTime + (k === 'arrowright' ? 5 : -5)); }
+  });
+  const JUMP = [['Jets TD', 5202], ['2-pt try', 5227], ['Bengals TD', 5602], ['Jets TD #2', 5937], ['Under review', 6062], ['Call overturned', 6117],
+    ['Tying TD', 6702], ['Lead change', 6737], ['4th-down stop', 7042], ['Final', 7127]];
+  $('chips').innerHTML = '<span class="lbl">Jump to:</span>' + JUMP.map(([n, x]) => `<button class="chip" data-t="${x}">${n}</button>`).join('');
+  $('chips').querySelectorAll('[data-t]').forEach(c => c.onclick = () => seekYT(+c.dataset.t));
+  requestAnimationFrame(tick);
+}
+
+function setup() {
+  M = T.meta;
+  const X = T.metrics, hits = T.scoring.filter(s => s.detected_t !== null).length, soft = new Set(M.soft_labels);
+  setupWatch();
+
+  // events
+  $('evh').textContent = `${hits} of ${T.scoring.length}`;
+  $('evrows').innerHTML = T.scoring.map(s => `<div class="evrow${s.detected_t === null ? ' miss' : ''}" data-t="${s.t}"><span class="gc">${s.game_clock.replace(/^0/, '')}</span><span>${evName(s)}</span>
+    <span class="tag ${s.detected_t === null ? 'bad' : 'ok'}">${s.detected_t === null ? 'missed' : 'caught'}</span>
+    <span class="tm">${s.detected_t === null ? '' : s.delay_s === 0 ? 'same frame' : (s.delay_s > 0 ? '+' : '') + s.delay_s + ' s'}</span></div>`).join('');
+  $('evrows').querySelectorAll('.evrow').forEach(r => r.onclick = () => seekYT(+r.dataset.t, true));
+
+  // results
+  const g = X.group_accuracy_firm, firm = pct(g['B. Scorebug']);
+  $('rh').textContent = firm; $('t1').textContent = firm; $('t2').textContent = pct(g['A. Layout']);
+  const sq = Object.entries(X.per_question).filter(([q]) => soft.has(q) && q !== 'replay_showing').map(([, m]) => m), avg = k => sq.reduce((a, m) => a + m[k], 0) / sq.length;
+  $('t3').textContent = pct(avg('accuracy'));
+  $('t3p').textContent = `Against ${pct(avg('majority_baseline'))} for always giving the commonest answer. Labels are soft, so indicative only.`;
+  $('t4').textContent = '$' + X.cost_usd_per_broadcast_hour.toFixed(2);
+  $('t4p').textContent = `One frame every ${M.sample_interval_s} s, all 24 answers, about ${X.latency_median_s.toFixed(1)} s per frame.`;
+  const top = X.calibration[X.calibration.length - 1], all = X.calibration.reduce((a, c) => a + c.n, 0);
+  $('cf').textContent = pct(top.accuracy);
+  $('cfp').textContent = `Answers given at 90% confidence or more are ${pct(top.accuracy)} right, and that is ${pct(top.n / all)} of all answers. Low-confidence answers can be ignored, as the event detector does.`;
+
+  $('foot').innerHTML = `<p><b>Method.</b> Model ${M.model} (Cloudflare Clef via OpenRouter), question schema v${M.schema_version}, run ${M.run_id}. ${M.frames} frames sampled every ${M.sample_interval_s} s. Answers are the highest-probability option; confidence is that probability. An event fires when a new answer holds for two consecutive frames at 60% confidence or more. This run cost $${M.cost_usd.toFixed(2)}.</p>
+    <p><b>Video.</b> Jets at Bengals, 26 Oct 2025, &copy; NFL, used with permission for internal demonstration only. Play-by-play from nflverse. Full numbers in reports/accuracy.md.</p>`;
+}
+fetch('replay/timeline.json').then(r => r.json()).then(x => { T = x; setup(); })
+  .catch(e => { $('err').textContent = 'Could not load replay/timeline.json. Serve this folder with "python -m http.server 8010" and open http://localhost:8010/ (' + e + ')'; });
+</script>
+</body>
+</html>
